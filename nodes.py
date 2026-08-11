@@ -1,5 +1,13 @@
 """节点定义 — 客服Agent的每个处理步骤"""
 from tools import search_knowledge_base, transfer_to_human
+from openai import OpenAI
+from config import LLM_CONFIG
+
+# 初始化大模型客户端
+client = OpenAI(
+    api_key=LLM_CONFIG["api_key"],
+    base_url=LLM_CONFIG["base_url"],
+)
 
 
 # ── 意图关键词映射（与知识库对齐）──────────────────────────
@@ -50,13 +58,25 @@ def handle_human(state: dict) -> dict:
 
 
 def general_reply(state: dict) -> dict:
-    """节点4：通用回复 — 大模型兜底（后续接入API）"""
+    """节点4：通用回复 — 大模型兜底"""
     user_input = state["user_input"]
-    response = (
-        '感谢您的提问。关于"' + user_input + '"，我暂时无法给出准确回答。\n'
-        '建议您：\n'
-        '1. 尝试换个说法提问\n'
-        '2. 输入"人工"转接人工客服\n'
-        '3. 查看帮助中心获取更多信息'
-    )
-    return {"response": response, "intent": "general"}
+    history = state.get("history", [])
+
+    # 构建对话历史
+    messages = [{"role": "system", "content": "你是智能客服助手，礼貌、简洁、准确地回答用户问题。如果不确定，诚实告知并建议转人工。"}]
+    for role, content in history[-6:]:  # 最近3轮对话
+        messages.append({"role": "user" if role == "user" else "assistant", "content": content})
+    messages.append({"role": "user", "content": user_input})
+
+    try:
+        response = client.chat.completions.create(
+            model=LLM_CONFIG["model_name"],
+            messages=messages,
+            max_tokens=500,
+            temperature=0.7,
+        )
+        reply = response.choices[0].message.content
+    except Exception as e:
+        reply = f"系统暂时繁忙，请稍后再试。（错误：{str(e)[:50]}）"
+
+    return {"response": reply, "intent": "general"}
