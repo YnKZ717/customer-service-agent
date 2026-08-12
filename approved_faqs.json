@@ -43,5 +43,25 @@
     "question": "技能详情页能复制技能内容吗",
     "answer": "技能详情页支持直接复制技能内容。",
     "category": "approved"
+  },
+  {
+    "question": "监控日志在哪看",
+    "answer": "首页点击右上角用户头像，选择“监控日志”即可查看账号安全与操作记录。",
+    "category": "approved"
+  },
+  {
+    "question": "在线文档怎么打开",
+    "answer": "在桌面客户端点击“帮助”，选择“在线文档”即可打开网页端开发者指南。",
+    "category": "approved"
+  },
+  {
+    "question": "客户端的帮助菜单在哪",
+    "answer": "桌面客户端点击“帮助”即可打开菜单，选择“在线文档”可跳转至网页端开发者指南。",
+    "category": "approved"
+  },
+  {
+    "question": "如何开启校验",
+    "answer": "请提供具体模块（如智能体或账号安全），以便确认开启校验的准确路径。",
+    "category": "approved"
   }
 ]

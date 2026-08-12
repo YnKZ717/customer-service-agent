@@ -34,7 +34,7 @@ page = st.sidebar.radio("选择页面", ["💬 客服对话", "📋 FAQ管理"])
 
 # ═══════════════════════════════════════════
 # 页面1：客服对话
-# ═══════════════════════════════════════════
+# ══════════════════════════════════════════
 if page == "💬 客服对话":
     st.title("🤖 Neowow Studio 智能客服")
     st.caption("我是 Neowow 平台的智能客服助手，有什么可以帮你的？")
@@ -55,54 +55,54 @@ if page == "💬 客服对话":
             st.session_state.messages.append({"role": "user", "content": q})
             st.session_state["_quick_q"] = q
 
-    # 显示历史消息
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
-
-    # 用户输入（改用 text_input + 按钮，解决中文输入法问题）
-    with st.form("chat_form", clear_on_submit=True):
-        user_input = st.text_input(
-            "输入你的问题...",
-            label_visibility="collapsed",
-            placeholder="输入你的问题，按回车或点击发送...",
-        )
-        submitted = st.form_submit_button(" 发送", use_container_width=True)
-
-    if submitted and user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
+    # 处理用户输入（在显示消息之前处理，这样新消息会出现在列表中）
+    # 注意：form 放在最后，这里先检查是否有待处理输入
+    if "_pending_input" in st.session_state:
+        user_input = st.session_state.pop("_pending_input")
     elif "_quick_q" in st.session_state:
         user_input = st.session_state.pop("_quick_q")
     else:
         user_input = None
 
     if user_input:
-        with st.chat_message("user"):
-            st.write(user_input)
+        with st.spinner("思考中..."):
+            result = app.invoke({
+                "user_input": user_input,
+                "intent": "",
+                "response": "",
+                "kb_found": False,
+                "kb_reference": "",
+                "kb_category": "",
+                "chunk_found": False,
+                "chunk_reference": "",
+                "history": st.session_state.chat_history,
+                "ticket_id": "",
+                "ticket_summary": "",
+            })
 
-        with st.chat_message("assistant"):
-            with st.spinner("思考中..."):
-                result = app.invoke({
-                    "user_input": user_input,
-                    "intent": "",
-                    "response": "",
-                    "kb_found": False,
-                    "kb_reference": "",
-                    "kb_category": "",
-                    "chunk_found": False,
-                    "chunk_reference": "",
-                    "history": st.session_state.chat_history,
-                    "ticket_id": "",
-                    "ticket_summary": "",
-                })
+            response = result.get("response", "抱歉，系统暂时无法回答。")
 
-                response = result.get("response", "抱歉，系统暂时无法回答。")
-                st.write(response)
+            st.session_state.chat_history.append(("user", user_input))
+            st.session_state.chat_history.append(("assistant", response))
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
-                st.session_state.chat_history.append(("user", user_input))
-                st.session_state.chat_history.append(("assistant", response))
+    # 显示所有历史消息（输入框上方）
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-        st.session_state.messages.append({"role": "assistant", "content": response})
+    # 用户输入框（放在页面最底部）
+    with st.form("chat_form", clear_on_submit=True):
+        input_text = st.text_input(
+            "输入你的问题...",
+            label_visibility="collapsed",
+            placeholder="输入你的问题，按回车或点击发送...",
+        )
+        submitted = st.form_submit_button(" 发送", use_container_width=True)
+        if submitted and input_text:
+            st.session_state.messages.append({"role": "user", "content": input_text})
+            st.session_state["_pending_input"] = input_text
+            st.rerun()
 
     # 底部统计
     st.divider()
