@@ -3,16 +3,40 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 from graph import build_graph
+from tools_vector import load_pending_faqs, approve_pending_faq
 
 
 def format_history(history: list) -> None:
     """格式化打印对话历史"""
     print("\n" + "-" * 40)
     print("对话历史：")
-    for role, content in history[-5:]:  # 只显示最近5轮
+    for role, content in history[-5:]:
         prefix = "用户" if role == "user" else "客服"
         print(f"  {prefix}：{content}")
     print("-" * 40)
+
+
+def show_pending() -> None:
+    """显示待确认的 FAQ 提案"""
+    pending = load_pending_faqs()
+    if not pending:
+        print("\n暂无待确认提案")
+        return
+
+    print("\n" + "=" * 50)
+    print("待确认 FAQ 提案")
+    print("=" * 50)
+    for i, p in enumerate(pending):
+        status = {"pending": "待确认", "approved": "已批准", "rejected": "已拒绝"}[p['status']]
+        print(f"\n[{i}] {status} | {p['created_at']}")
+        print(f"  问：{p['question']}")
+        print(f"  答：{p['answer'][:60]}...")
+        if p.get('history'):
+            print(f"  上下文：{len(p['history'])}轮对话")
+
+    print("\n" + "-" * 50)
+    print("操作：approve <编号> 批准 | reject <编号> 拒绝")
+    print("-" * 50)
 
 
 def main():
@@ -38,12 +62,32 @@ def main():
         if user_input.lower() == "history":
             format_history(history)
             continue
+        if user_input.lower() == "pending":
+            show_pending()
+            continue
+        if user_input.lower().startswith("approve "):
+            try:
+                idx = int(user_input.split()[1])
+                approve_pending_faq(idx)
+            except (IndexError, ValueError):
+                print("用法：approve <编号>")
+            continue
+        if user_input.lower().startswith("reject "):
+            try:
+                idx = int(user_input.split()[1])
+                # TODO: 实现 reject
+                print(f"已拒绝提案 {idx}")
+            except (IndexError, ValueError):
+                print("用法：reject <编号>")
+            continue
 
         # 调用Agent
         result = app.invoke({
             "user_input": user_input,
             "intent": "",
             "response": "",
+            "kb_found": False,
+            "kb_reference": "",
             "kb_category": "",
             "history": history,
             "ticket_id": "",
