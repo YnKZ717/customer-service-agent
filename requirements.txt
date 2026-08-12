@@ -1,3 +1,10 @@
 langgraph
 langchain-openai
 python-dotenv
+openai
+chromadb
+sentence-transformers
+text2vec
+numpy
+streamlit
+gradio
