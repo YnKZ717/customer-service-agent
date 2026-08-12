@@ -386,5 +386,22 @@
     ],
     "created_at": "2026-08-12 14:47",
     "status": "pending"
+  },
+  {
+    "question": "你谁",
+    "answer": "我是Neowow Studio的智能客服助手，很高兴为你服务。",
+    "original_answer": "我是 Neowow Studio 的智能客服助手，很高兴为你服务！有什么可以帮你的吗？",
+    "history": [
+      [
+        "user",
+        "怎么充值积分"
+      ],
+      [
+        "assistant",
+        "点击右上角'加号'按钮，选择充值金额，点击'生成二维码'，手机扫码支付即可。积分到账后可用于购买套餐和调用模型。"
+      ]
+    ],
+    "created_at": "2026-08-12 15:01",
+    "status": "pending"
   }
 ]

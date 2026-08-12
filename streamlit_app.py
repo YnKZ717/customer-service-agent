@@ -6,14 +6,21 @@ import streamlit as st
 from graph import build_graph
 from tools_vector import load_pending_faqs, approve_pending_faq, reject_pending_faq
 
-# ── 页面配置 ──
+# ── 页面配置（设置中文，防止浏览器翻译提示）──────────
 st.set_page_config(
     page_title="Neowow 智能客服",
     page_icon="🤖",
     layout="wide",
 )
 
-# ── 初始化 Agent ──
+# 注入 HTML 声明语言为中文，防止浏览器翻译提示
+st.markdown("""
+<script>
+document.documentElement.lang = 'zh-CN';
+</script>
+""", unsafe_allow_html=True)
+
+# ─ 初始化 Agent ──
 @st.cache_resource
 def get_app():
     return build_graph()
@@ -46,7 +53,6 @@ if page == "💬 客服对话":
     for col, q in zip(cols, quick_questions):
         if col.button(q, use_container_width=True):
             st.session_state.messages.append({"role": "user", "content": q})
-            # 触发后续处理
             st.session_state["_quick_q"] = q
 
     # 显示历史消息
@@ -54,12 +60,21 @@ if page == "💬 客服对话":
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
 
-    # 用户输入
-    user_input = st.chat_input("输入你的问题...")
-    if user_input:
+    # 用户输入（改用 text_input + 按钮，解决中文输入法问题）
+    with st.form("chat_form", clear_on_submit=True):
+        user_input = st.text_input(
+            "输入你的问题...",
+            label_visibility="collapsed",
+            placeholder="输入你的问题，按回车或点击发送...",
+        )
+        submitted = st.form_submit_button(" 发送", use_container_width=True)
+
+    if submitted and user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
     elif "_quick_q" in st.session_state:
         user_input = st.session_state.pop("_quick_q")
+    else:
+        user_input = None
 
     if user_input:
         with st.chat_message("user"):
@@ -84,17 +99,15 @@ if page == "💬 客服对话":
                 response = result.get("response", "抱歉，系统暂时无法回答。")
                 st.write(response)
 
-                # 更新对话历史
                 st.session_state.chat_history.append(("user", user_input))
                 st.session_state.chat_history.append(("assistant", response))
 
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-    # 底部信息
+    # 底部统计
     st.divider()
-    kb_count = st.session_state.get("kb_count", "—")
     col1, col2, col3 = st.columns(3)
-    col1.metric("FAQ数量", kb_count)
+    col1.metric("FAQ数量", len(st.session_state.get("_faq_data", [])))
     pending = load_pending_faqs()
     pending_count = len([p for p in pending if p['status'] == 'pending'])
     col2.metric("待确认提案", pending_count)
@@ -105,7 +118,7 @@ if page == "💬 客服对话":
 # 页面2：FAQ管理（沉淀审核）
 # ═══════════════════════════════════════════
 elif page == "📋 FAQ管理":
-    st.title(" FAQ 管理")
+    st.title("📋 FAQ 管理")
     st.caption("审核用户提出的新问题，批准后会加入知识库")
 
     pending = load_pending_faqs()
@@ -139,7 +152,7 @@ elif page == "📋 FAQ管理":
 
     # 查看已批准的FAQ
     st.divider()
-    st.subheader(" 知识库 FAQ")
+    st.subheader("📚 知识库 FAQ")
     from tools_vector import FAQ_DATA
     st.write(f"共 **{len(FAQ_DATA)}** 条 FAQ")
 
