@@ -1,5 +1,6 @@
 """节点定义 — 客服Agent的每个处理步骤"""
 from tools_vector import search_knowledge_base, transfer_to_human, save_pending_faq
+from tools_chunk import search_chunks
 from openai import OpenAI
 from config import LLM_CONFIG
 
@@ -108,6 +109,32 @@ def answer_from_kb(state: dict) -> dict:
     }
 
 
+def chunk_search_node(state: dict) -> dict:
+    """节点3：Chunk搜索 — FAQ没找到时，搜文档片段"""
+    query = state.get("user_input", "")
+
+    if not query or not isinstance(query, str):
+        return {"chunk_found": False, "intent": state.get("intent", "general"), "chunk_reference": ""}
+
+    # 搜索chunk片段
+    chunks = search_chunks(query, top_k=2, threshold=0.5)
+
+    if chunks:
+        # 把片段拼成参考文本
+        chunk_text = "\n\n".join([f"[文档片段{i+1}]：{c}" for i, c in enumerate(chunks)])
+        return {
+            "chunk_found": True,
+            "chunk_reference": chunk_text,
+            "intent": state["intent"],
+        }
+    else:
+        return {
+            "chunk_found": False,
+            "chunk_reference": "",
+            "intent": state["intent"],
+        }
+
+
 def handle_human(state: dict) -> dict:
     """节点3：转人工 — 生成工单"""
     result = transfer_to_human(
@@ -119,13 +146,21 @@ def handle_human(state: dict) -> dict:
 
 
 def general_reply(state: dict) -> dict:
-    """节点4：通用回复 — 大模型兜底，使用三层 system prompt"""
+    """节点5：通用回复 — 大模型兜底，使用三层 system prompt"""
     user_input = state["user_input"]
     history = state.get("history", [])
     kb_reference = state.get("kb_reference", "")
+    chunk_reference = state.get("chunk_reference", "")
+
+    # 合并参考内容
+    all_reference = ""
+    if kb_reference:
+        all_reference += "【FAQ参考】\n" + kb_reference + "\n\n"
+    if chunk_reference:
+        all_reference += "【文档片段参考】\n" + chunk_reference
 
     # 组装三层 system prompt
-    system_prompt = build_system_prompt(history, kb_reference)
+    system_prompt = build_system_prompt(history, all_reference if all_reference else None)
 
     # 构建消息
     messages = [{"role": "system", "content": system_prompt}]

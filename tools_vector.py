@@ -13,8 +13,8 @@ collection = client.create_collection("faq_knowledge")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 你的任务：
-# 1. 把每条FAQ的类别填对（refund/return/shipping/invoice/order/payment/member/complaint/promo）
-# 2. 在第11、12条填你自己想的FAQ
+# 1. 把每条FAQ的类别填对（account/billing/codingplan等）
+# 2. 在第12、13条填你自己想的FAQ
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FAQ_DATA = [
     # (问题, 答案, 类别)
@@ -57,6 +57,25 @@ FAQ_DATA = [
     # 第12条：注销账户
     ("怎么注销账户", "如需注销账户，请在账户中心提交注销申请，或联系人工客服处理。注销后数据将无法恢复，请谨慎操作。", "account"),
 ]
+
+# ── 加载已批准的FAQ（从文件）──────────────────────────
+APPROVED_FAQ_FILE = "approved_faqs.json"
+
+
+def load_approved_faqs():
+    """从文件加载已批准的FAQ"""
+    import json
+    try:
+        with open(APPROVED_FAQ_FILE, 'r', encoding='utf-8') as f:
+            approved = json.load(f)
+            # 转成 FAQ_DATA 格式 (问题, 答案, 类别)
+            return [(a['question'], a['answer'], a.get('category', 'approved')) for a in approved]
+    except FileNotFoundError:
+        return []
+
+
+# 合并硬编码FAQ和已批准的FAQ
+FAQ_DATA.extend(load_approved_faqs())
 
 
 def init_knowledge_base():
@@ -196,8 +215,40 @@ def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.8
 PENDING_FAQ_FILE = "pending_faqs.json"
 
 
+def refine_answer(question: str, raw_answer: str) -> str:
+    """用大模型把啰嗦的答案提炼成简洁FAQ格式"""
+    from openai import OpenAI
+    from config import LLM_CONFIG
+
+    client = OpenAI(
+        api_key=LLM_CONFIG["api_key"],
+        base_url=LLM_CONFIG["base_url"],
+    )
+
+    messages = [
+        {"role": "system", "content": "你是FAQ编辑。把客服回答提炼成简洁、准确的一句话答案（50字以内），去掉客套话和重复内容。"},
+        {"role": "user", "content": f"问题：{question}\n原始回答：{raw_answer}\n\n请提炼成一句话答案："}
+    ]
+
+    try:
+        response = client.chat.completions.create(
+            model=LLM_CONFIG["model_name"],
+            messages=messages,
+            max_tokens=100,
+            temperature=0.3,
+        )
+        refined = response.choices[0].message.content.strip()
+        # 去掉可能的引号
+        if refined.startswith('"') and refined.endswith('"'):
+            refined = refined[1:-1]
+        return refined
+    except Exception as e:
+        print(f"[提炼失败] {e}")
+        return raw_answer  # 失败就用原始答案
+
+
 def save_pending_faq(question: str, llm_answer: str, history: list = None):
-    """保存未匹配的问题到待确认队列"""
+    """保存未匹配的问题到待确认队列（自动提炼答案）"""
     import json
     from datetime import datetime
 
@@ -209,10 +260,20 @@ def save_pending_faq(question: str, llm_answer: str, history: list = None):
     except FileNotFoundError:
         pass
 
+    # 检查是否已存在相同问题
+    for p in pending:
+        if p['question'] == question:
+            print(f"[沉淀] 问题已存在，跳过：{question}")
+            return
+
+    # 提炼答案
+    refined_answer = refine_answer(question, llm_answer)
+
     # 添加新提案
     proposal = {
         "question": question,
-        "answer": llm_answer,
+        "answer": refined_answer,
+        "original_answer": llm_answer,  # 保留原始答案供参考
         "history": history[-4:] if history else [],  # 最近2轮上下文
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "status": "pending",  # pending / approved / rejected
@@ -237,7 +298,7 @@ def load_pending_faqs() -> list:
 
 
 def approve_pending_faq(index: int) -> bool:
-    """批准提案，加入知识库"""
+    """批准提案，持久化到文件并重建向量索引"""
     import json
     pending = load_pending_faqs()
     if index < 0 or index >= len(pending):
@@ -248,8 +309,21 @@ def approve_pending_faq(index: int) -> bool:
         print(f"该提案已批准")
         return False
 
-    # 添加到 FAQ_DATA
-    FAQ_DATA.append((proposal['question'], proposal['answer'], 'pending'))
+    # 保存到已批准文件
+    approved = []
+    try:
+        with open(APPROVED_FAQ_FILE, 'r', encoding='utf-8') as f:
+            approved = json.load(f)
+    except FileNotFoundError:
+        pass
+
+    approved.append({
+        "question": proposal['question'],
+        "answer": proposal['answer'],
+        "category": 'approved'
+    })
+    with open(APPROVED_FAQ_FILE, 'w', encoding='utf-8') as f:
+        json.dump(approved, f, ensure_ascii=False, indent=2)
 
     # 标记为已批准
     proposal['status'] = 'approved'
@@ -257,7 +331,30 @@ def approve_pending_faq(index: int) -> bool:
         json.dump(pending, f, ensure_ascii=False, indent=2)
 
     print(f"已批准：{proposal['question']}")
-    print("请重新运行 init_knowledge_base() 重建索引")
+
+    # 重建向量索引
+    init_knowledge_base()
+    print(f"向量索引已重建，共 {len([f for f in FAQ_DATA if f[0]])} 条FAQ")
+    return True
+
+
+def reject_pending_faq(index: int) -> bool:
+    """拒绝提案"""
+    import json
+    pending = load_pending_faqs()
+    if index < 0 or index >= len(pending):
+        return False
+
+    proposal = pending[index]
+    if proposal['status'] == 'rejected':
+        print(f"该提案已拒绝")
+        return False
+
+    proposal['status'] = 'rejected'
+    with open(PENDING_FAQ_FILE, 'w', encoding='utf-8') as f:
+        json.dump(pending, f, ensure_ascii=False, indent=2)
+
+    print(f"已拒绝：{proposal['question']}")
     return True
 
 

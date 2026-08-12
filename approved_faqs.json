@@ -1,0 +1,47 @@
+[
+  {
+    "question": "API接口文档在哪看",
+    "answer": "平台暂未开放API接口文档，如有需求请联系官方客服。",
+    "category": "approved"
+  },
+  {
+    "question": "你好你是谁",
+    "answer": "我是Neowow Studio的智能客服助手，很高兴为你服务。",
+    "category": "approved"
+  },
+  {
+    "question": "免费试用怎么领",
+    "answer": "登录Neowow平台，点击“智能体”中的“免费试用”按钮，即可领取云端服务器试用资格。",
+    "category": "approved"
+  },
+  {
+    "question": "用量明细怎么看",
+    "answer": "登录账户中心，点击“用量明细”即可查看模型调用流水及消耗情况。",
+    "category": "approved"
+  },
+  {
+    "question": "购买记录在哪看",
+    "answer": "在Neowow Studio网页端个人中心或账户设置中查看购买记录；找不到可联系官方客服。",
+    "category": "approved"
+  },
+  {
+    "question": " Credits是什么",
+    "answer": "Credits是CodingPlan智能体套餐中的模型调用额度，可在账户中心查看，支持现金或积分购买。",
+    "category": "approved"
+  },
+  {
+    "question": "怎么更换支付方式",
+    "answer": "目前仅支持扫码支付，暂不支持更换其他支付方式。",
+    "category": "approved"
+  },
+  {
+    "question": "技能怎么收藏",
+    "answer": "在技能市场点击技能卡片右上角的五角星图标即可收藏，之后可在技能市场或个人中心查看。",
+    "category": "approved"
+  },
+  {
+    "question": "技能详情页能复制技能内容吗",
+    "answer": "技能详情页支持直接复制技能内容。",
+    "category": "approved"
+  }
+]

@@ -3,7 +3,7 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 from graph import build_graph
-from tools_vector import load_pending_faqs, approve_pending_faq
+from tools_vector import load_pending_faqs, approve_pending_faq, reject_pending_faq
 
 
 def format_history(history: list) -> None:
@@ -75,8 +75,7 @@ def main():
         if user_input.lower().startswith("reject "):
             try:
                 idx = int(user_input.split()[1])
-                # TODO: 实现 reject
-                print(f"已拒绝提案 {idx}")
+                reject_pending_faq(idx)
             except (IndexError, ValueError):
                 print("用法：reject <编号>")
             continue
@@ -89,6 +88,8 @@ def main():
             "kb_found": False,
             "kb_reference": "",
             "kb_category": "",
+            "chunk_found": False,
+            "chunk_reference": "",
             "history": history,
             "ticket_id": "",
             "ticket_summary": "",
@@ -104,8 +105,14 @@ def main():
         # 显示意图分类（调试用，后续可去掉）
         intent = result.get("intent", "")
         kb_cat = result.get("kb_category", "")
+        chunk_found = result.get("chunk_found", False)
         if intent:
-            print(f"  [意图：{intent} | 知识库分类：{kb_cat}]")
+            source = ""
+            if result.get("kb_found"):
+                source = f" | 知识库分类：{kb_cat}"
+            elif chunk_found:
+                source = " | 文档片段参考"
+            print(f"  [意图：{intent}{source}]")
 
         # 转人工时显示工单信息
         ticket_id = result.get("ticket_id", "")
