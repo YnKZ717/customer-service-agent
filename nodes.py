@@ -21,18 +21,48 @@ for fm in FALLBACK_MODELS:
 
 # ── 意图关键词映射（与知识库对齐）──────────────────────────
 INTENT_KEYWORDS = {
-    "account":      ["注册", "登录", "账号", "密码"],
-    "billing":      ["充值", "积分", "付费", "支付", "扫码"],
-    "codingplan":   ["CodingPlan", "套餐", "额度", "Credits"],
-    "agent_service":["智能体", "对话", "创作", "云端服务"],
+    # 账户相关
+    "account":      ["注册", "登录", "账号", "密码", "注销", "换绑"],
+
+    # 计费相关
+    "billing":      ["充值", "积分", "付费", "支付", "扫码", "余额", "套餐"],
+
+    # 套餐服务
+    "codingplan":   ["CodingPlan", "套餐", "额度", "Credits", "会员", "权益", "VIP"],
+
+    # 智能体使用
+    "agent_service":["智能体", "对话", "创作", "云端服务", "试用"],
+
+    # 桌面客户端
     "desktop":      ["客户端", "桌面", "下载", "安装"],
+
+    # 应用市场
     "app_market":   ["应用市场", "购买应用", "上传应用", "预览"],
-    "skill_market": ["技能市场", "技能", "同步"],
+
+    # 技能市场
+    "skill_market": ["技能市场", "技能", "同步", "收藏"],
+
+    # 部署 Token
     "deploy_token": ["部署Token", "CI/CD", "发布"],
+
+    # 数据备份
     "backup":       ["备份", "数据", "记录", "云端"],
-    "membership":   ["会员", "权益", "VIP"],
+
+    # 投诉反馈
     "complaint":    ["投诉", "不满意", "差评"],
+
+    # 转人工
     "human":        ["人工", "转人工", "客服"],
+
+    # 故障排查
+    "troubleshoot": ["失败", "报错", "错误", "不行", "有问题", "异常", "卡住", "没反应",
+                    "生成失败", "无法生成", "不能用", "坏了"],
+
+    # 任务状态查询
+    "task_status":  ["任务", "进度", "好了吗", "完成了吗", "还要多久", "状态"],
+
+    # 操作指导
+    "howto":        ["怎么用", "怎么做", "如何使用", "教程", "指南", "步骤"],
 }
 
 # ── 三层 system prompt 组装 ──
@@ -153,6 +183,73 @@ def handle_human(state: dict) -> dict:
         "response": t("ticket_created", ticket_id=ticket['ticket_id']),
         "ticket_id": ticket['ticket_id'],
         "intent": state["intent"],
+    }
+
+
+def troubleshoot(state: dict) -> dict:
+    """故障排查节点 — 多轮引导用户解决问题"""
+    user_input = state["user_input"]
+    history = state.get("history", [])
+
+    # 构建故障排查的 system prompt
+    troubleshoot_prompt = """你是 Neowow 平台的技术支持专家。用户遇到了问题，你需要通过多轮对话引导他们解决。
+
+排查步骤：
+1. 先确认问题类型（视频生成/图片生成/音频处理/账户问题/其他）
+2. 了解具体情况（错误提示、任务 ID、操作步骤）
+3. 给出针对性的排查建议（最多 3 条）
+4. 如果问题仍未解决，建议转人工客服
+
+回答规则：
+- 每次只问 1-2 个问题，不要一次问太多
+- 用编号列表给出排查步骤
+- 语气友好、专业
+- 如果用户已经提供了足够信息，直接给出解决方案"""
+
+    # 构建消息
+    messages = [{"role": "system", "content": troubleshoot_prompt}]
+
+    # 添加最近 4 轮对话历史（故障排查需要更多上下文）
+    for role, content in history[-8:]:
+        messages.append({"role": "user" if role == "user" else "assistant", "content": content})
+
+    messages.append({"role": "user", "content": user_input})
+
+    try:
+        response = client.chat.completions.create(
+            model=LLM_CONFIG["model_name"],
+            messages=messages,
+            max_tokens=600,
+            temperature=0.5,  # 更稳定的输出
+        )
+        reply = response.choices[0].message.content
+    except Exception as e:
+        # 主模型失败，尝试备用模型
+        print(f"[模型降级] 主模型失败：{str(e)[:80]}")
+        reply = None
+        for i, fb_client in enumerate(fallback_clients):
+            fm = FALLBACK_MODELS[i]
+            try:
+                print(f"[模型降级] 切换到备用模型 {fm['model_name']}...")
+                response = fb_client.chat.completions.create(
+                    model=fm["model_name"],
+                    messages=messages,
+                    max_tokens=600,
+                    temperature=0.5,
+                )
+                reply = response.choices[0].message.content
+                print(f"[模型降级] 备用模型成功")
+                break
+            except Exception as e2:
+                print(f"[模型降级] 备用模型 {i+1} 也失败：{str(e2)[:50]}")
+                continue
+
+        if reply is None:
+            reply = "抱歉，系统暂时繁忙，请稍后再试。如需紧急帮助，请输入'转人工'。"
+
+    return {
+        "response": reply,
+        "intent": "troubleshoot",
     }
 
 

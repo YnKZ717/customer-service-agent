@@ -21,19 +21,23 @@ collection = client.create_collection("faq_knowledge")
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FAQ_DATA = [
     # 类别映射说明：
-    # account      - 账户管理（注册、注销、换绑、监控日志）
-    # billing      - 充值支付（积分、Credits、购买记录、用量明细）
-    # codingplan   - 套餐服务（CodingPlan、会员权益）
-    # agent_service- 智能体使用（免费试用、使用智能体）
-    # desktop      - 桌面客户端（安装、在线文档）
-    # app_market   - 应用市场（浏览、购买、上传）
-    # skill_market - 技能市场（收藏、复制）
-    # deploy_token - 部署 Token（CI/CD 发布）
-    # backup       - 数据备份（对话记录、云端备份）
-    # complaint    - 投诉反馈
-    # team         - 团队协作（邀请、加入）
-    # export       - 作品导出
-    # api          - API 接口
+    # account          - 账户管理（注册、注销、换绑、监控日志）
+    # billing          - 充值支付（积分、Credits、购买记录、用量明细）
+    # codingplan       - 套餐服务（CodingPlan、会员权益）
+    # agent_service    - 智能体使用（免费试用、使用智能体）
+    # desktop          - 桌面客户端（安装、在线文档）
+    # app_market       - 应用市场（浏览、购买、上传）
+    # skill_market     - 技能市场（收藏、复制）
+    # deploy_token     - 部署 Token（CI/CD 发布）
+    # backup           - 数据备份（对话记录、云端备份）
+    # complaint        - 投诉反馈
+    # team             - 团队协作（邀请、加入）
+    # export           - 作品导出
+    # api              - API 接口
+    # video_generation - 视频生成（参数、格式、故障排查）
+    # image_generation - 图片生成（风格、分辨率、批量）
+    # audio_processing - 音频处理（配音、音乐、转录）
+    # project_management - 项目管理（工作流、权限）
 ]
 
 # ── 加载已批准的FAQ（从文件）──────────────────────────

@@ -7,6 +7,7 @@ from nodes import (
     chunk_search_node,
     handle_human,
     general_reply,
+    troubleshoot,
 )
 
 
@@ -33,17 +34,20 @@ def build_graph():
     graph.add_node("classify", classify_intent)      # 意图识别
     graph.add_node("kb_answer", answer_from_kb)      # FAQ知识库回答
     graph.add_node("chunk_search", chunk_search_node) # Chunk文档片段搜索
+    graph.add_node("troubleshoot", troubleshoot)      # 故障排查（多轮引导）
     graph.add_node("human", handle_human)             # 转人工
     graph.add_node("general", general_reply)          # 通用回复（大模型兜底）
 
-    # ─ 入口 ──
+    # ── 入口 ──
     graph.set_entry_point("classify")
 
-    # ── 条件分支1：根据意图判断是否转人工或查知识库 ──
+    # ── 条件分支1：根据意图判断路由 ──
     def route_after_classify(state):
         intent = state.get("intent", "general")
         if intent == "human":
             return "human"
+        elif intent == "troubleshoot":
+            return "troubleshoot"
         else:
             # 所有问题都先查FAQ知识库
             return "kb_answer"
@@ -53,6 +57,7 @@ def build_graph():
         route_after_classify,
         {
             "human": "human",
+            "troubleshoot": "troubleshoot",
             "kb_answer": "kb_answer",
         },
     )
@@ -73,7 +78,7 @@ def build_graph():
         },
     )
 
-    # ── 条件分支3：Chunk查完后，没找到就走大模型 ─
+    # ── 条件分支3：Chunk查完后，没找到就走大模型 ──
     def route_after_chunk(state):
         # 无论Chunk是否找到，都走大模型（Chunk找到的话会给大模型提供参考）
         return "general"
@@ -86,8 +91,9 @@ def build_graph():
         },
     )
 
-    # ─ 其他分支 → 结束 ──
+    # ── 其他分支 → 结束 ──
     graph.add_edge("human", END)
+    graph.add_edge("troubleshoot", END)
     graph.add_edge("general", END)
 
     return graph.compile()

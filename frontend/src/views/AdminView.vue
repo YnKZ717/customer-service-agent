@@ -8,19 +8,25 @@ const headers = { 'Content-Type': 'application/json', 'X-API-Key': API_KEY }
 // 分类定义
 const CATEGORIES = [
   { key: 'all', name: '全部', icon: '📋' },
-  { key: 'account', name: '账户管理', icon: '👤' },
+  { key: 'account', name: '账户管理', icon: '' },
   { key: 'billing', name: '充值支付', icon: '💰' },
   { key: 'codingplan', name: '套餐服务', icon: '📦' },
   { key: 'agent_service', name: '智能体使用', icon: '🤖' },
   { key: 'desktop', name: '桌面客户端', icon: '💻' },
   { key: 'app_market', name: '应用市场', icon: '️' },
   { key: 'skill_market', name: '技能市场', icon: '🎯' },
-  { key: 'deploy_token', name: '部署 Token', icon: '🔑' },
+  { key: 'deploy_token', name: '部署 Token', icon: '' },
   { key: 'backup', name: '数据备份', icon: '☁️' },
   { key: 'complaint', name: '投诉反馈', icon: '' },
   { key: 'team', name: '团队协作', icon: '👥' },
-  { key: 'export', name: '作品导出', icon: '📤' },
-  { key: 'api', name: 'API 接口', icon: '🔌' },
+  { key: 'export', name: '作品导出', icon: '' },
+  { key: 'api', name: 'API 接口', icon: '' },
+  { key: 'video_generation', name: '视频生成', icon: '🎬' },
+  { key: 'image_generation', name: '图片生成', icon: '🖼️' },
+  { key: 'audio_processing', name: '音频处理', icon: '🎵' },
+  { key: 'project_management', name: '项目管理', icon: '📁' },
+  { key: 'task_status', name: '任务状态', icon: '⏳' },
+  { key: 'troubleshoot', name: '故障排查', icon: '🔧' },
 ]
 
 interface FaqItem {

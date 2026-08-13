@@ -118,5 +118,125 @@
     "question": "API 接口文档在哪看",
     "answer": "平台暂未开放 API 接口文档，如有需求请联系官方客服。",
     "category": "api"
+  },
+  {
+    "question": "视频生成需要多久",
+    "answer": "视频生成时间取决于时长和分辨率。通常 1 分钟视频需要 5-10 分钟生成。高峰期可能需要更长时间，请耐心等待。",
+    "category": "video_generation"
+  },
+  {
+    "question": "视频生成失败了怎么办",
+    "answer": "请检查：1. 积分余额是否充足 2. 视频时长是否超过套餐限制 3. 网络是否正常。如仍失败，请提供任务 ID 联系人工客服。",
+    "category": "video_generation"
+  },
+  {
+    "question": "支持哪些视频格式",
+    "answer": "目前支持 MP4、MOV、AVI 格式导出。分辨率支持 720p、1080p、4K（需高级套餐）。",
+    "category": "video_generation"
+  },
+  {
+    "question": "视频生成质量不满意怎么调整",
+    "answer": "可以尝试：1. 调整提示词，增加细节描述 2. 选择不同的风格模板 3. 提高分辨率设置 4. 使用参考图片引导生成。",
+    "category": "video_generation"
+  },
+  {
+    "question": "图片生成支持哪些风格",
+    "answer": "支持写实、动漫、油画、水彩、素描等多种风格。可在生成界面选择风格模板，或通过提示词自定义风格。",
+    "category": "image_generation"
+  },
+  {
+    "question": "如何批量生成图片",
+    "answer": "在图片生成界面点击\"批量生成\"，上传提示词列表（每行一个），设置数量和风格后提交。批量生成会消耗更多积分。",
+    "category": "image_generation"
+  },
+  {
+    "question": "图片分辨率最高多少",
+    "answer": "基础套餐支持最高 1024x1024，高级套餐支持 2048x2048，企业套餐支持 4096x4096。更高分辨率需消耗更多积分。",
+    "category": "image_generation"
+  },
+  {
+    "question": "支持哪些音频格式",
+    "answer": "支持 MP3、WAV、FLAC、AAC 格式。输入支持语音转文字，输出支持文字转语音（多语言）。",
+    "category": "audio_processing"
+  },
+  {
+    "question": "如何给视频配音",
+    "answer": "在音频处理模块选择\"视频配音\"，上传视频文件，选择语音类型（男声/女声/童声）和语言，系统会自动生成配音。",
+    "category": "audio_processing"
+  },
+  {
+    "question": "如何创建新项目",
+    "answer": "点击首页\"新建项目\"，选择项目类型（视频/图片/音频），填写项目名称和描述，即可开始创作。",
+    "category": "project_management"
+  },
+  {
+    "question": "如何与团队成员协作",
+    "answer": "在项目页面点击\"邀请成员\"，输入成员邮箱或分享链接。成员可以查看、编辑项目，权限可在设置中调整。",
+    "category": "project_management"
+  },
+  {
+    "question": "我的任务还要多久完成",
+    "answer": "在\"我的任务\"页面可以查看实时进度。生成任务通常需要 5-30 分钟，复杂任务可能更长。完成后会收到通知。",
+    "category": "task_status"
+  },
+  {
+    "question": "平台支持哪些功能",
+    "answer": "Neowow 支持视频生成、图片生成、音频处理、智能体对话、团队协作等功能。具体见智能体界面或帮助文档。",
+    "category": "agent_service"
+  },
+  {
+    "question": "如何联系客服",
+    "answer": "您可以通过以下方式联系客服：1. 在对话框输入\"转人工\" 2. 发送邮件至 support@neowow.studio 3. 在应用内点击\"帮助\"→\"在线客服\"。",
+    "category": "complaint"
+  },
+  {
+    "question": "积分用完怎么办",
+    "answer": "积分用完后，您可以在账户中心点击\"充值\"购买更多积分。也可以等待下月套餐重置，或升级套餐获取更多额度。",
+    "category": "billing"
+  },
+  {
+    "question": "如何查看我的套餐",
+    "answer": "在账户中心点击\"我的套餐\"，可以查看当前套餐类型、剩余额度、到期时间。如需升级，点击\"升级套餐\"按钮。",
+    "category": "codingplan"
+  },
+  {
+    "question": "生成内容可以商用吗",
+    "answer": "通过 Neowow 生成的内容，在遵守平台使用协议的前提下可以商用。具体权限请参考您的套餐说明或联系人工客服确认。",
+    "category": "billing"
+  },
+  {
+    "question": "如何删除我的作品",
+    "answer": "在作品列表中找到要删除的作品，点击\"...\"菜单→\"删除\"。删除后无法恢复，请谨慎操作。团队作品需管理员权限。",
+    "category": "project_management"
+  },
+  {
+    "question": "支持哪些语言",
+    "answer": "平台界面支持中文和英文。内容生成支持多语言提示词，包括中文、英文、日文、韩文等主流语言。",
+    "category": "agent_service"
+  },
+  {
+    "question": "生成速度慢怎么优化",
+    "answer": "可以尝试：1. 避开高峰期（工作日上午较慢） 2. 降低分辨率/时长 3. 升级套餐获取优先队列 4. 清除浏览器缓存。",
+    "category": "troubleshoot"
+  },
+  {
+    "question": "视频最长可以生成多久",
+    "answer": "基础套餐支持最长 1 分钟视频，高级套餐支持 5 分钟，企业套餐支持 30 分钟。更长视频需分段生成后合并。",
+    "category": "video_generation"
+  },
+  {
+    "question": "可以上传参考图片生成视频吗",
+    "answer": "可以。在视频生成界面点击\"上传参考图\"，支持 JPG、PNG 格式。参考图会影响视频的风格和构图。",
+    "category": "video_generation"
+  },
+  {
+    "question": "如何修改已生成的图片",
+    "answer": "在作品列表中找到图片，点击\"编辑\"可以进行：裁剪、调色、添加文字、风格转换等操作。修改后保存为新版本。",
+    "category": "image_generation"
+  },
+  {
+    "question": "生成图片的版权是谁的",
+    "answer": "使用 Neowow 生成的图片，版权归创作者（用户）所有。平台不主张版权，但请勿生成侵权内容。",
+    "category": "image_generation"
   }
 ]
