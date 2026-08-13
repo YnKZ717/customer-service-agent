@@ -7,6 +7,7 @@ const headers = { 'Content-Type': 'application/json', 'X-API-Key': API_KEY }
 
 // 分类定义
 const CATEGORIES = [
+  { key: 'pending', name: '待审核', icon: '⏳' },
   { key: 'all', name: '全部', icon: '📋' },
   { key: 'account', name: '账户管理', icon: '' },
   { key: 'billing', name: '充值支付', icon: '💰' },
@@ -48,6 +49,7 @@ const formData = ref({ question: '', answer: '', category: 'account' })
 
 // 按分类过滤
 const filteredFaqs = computed(() => {
+  if (activeCategory.value === 'pending') return pendingItems.value
   if (activeCategory.value === 'all') return faqItems.value
   return faqItems.value.filter(f => f.category === activeCategory.value)
 })
@@ -73,7 +75,10 @@ async function loadData() {
 
     const pendingResp = await fetch(`${API_BASE}/api/pending`, { headers })
     const pendingData = await pendingResp.json()
-    pendingItems.value = pendingData.items
+    pendingItems.value = pendingData.items.map((item: any, idx: number) => ({
+      ...item,
+      id: item._realIndex || idx
+    }))
   } catch {
     // ignore
   } finally {
@@ -143,6 +148,34 @@ async function deleteFaq(id: number) {
   }
 }
 
+async function approvePending(id: number) {
+  try {
+    const resp = await fetch(`${API_BASE}/api/approve/${id}`, { method: 'POST', headers })
+    if (resp.ok) {
+      await loadData()
+    } else {
+      const err = await resp.json().catch(() => ({}))
+      alert(err.detail || '批准失败')
+    }
+  } catch {
+    alert('批准失败')
+  }
+}
+
+async function rejectPending(id: number) {
+  try {
+    const resp = await fetch(`${API_BASE}/api/reject/${id}`, { method: 'POST', headers })
+    if (resp.ok) {
+      await loadData()
+    } else {
+      const err = await resp.json().catch(() => ({}))
+      alert(err.detail || '拒绝失败')
+    }
+  } catch {
+    alert('拒绝失败')
+  }
+}
+
 function getCategoryName(key: string): string {
   const cat = CATEGORIES.find(c => c.key === key)
   return cat ? `${cat.icon} ${cat.name}` : key
@@ -187,12 +220,23 @@ onMounted(() => {
         <div class="faq-header">
           <span class="faq-category">{{ getCategoryName(item.category) }}</span>
           <div class="faq-actions">
-            <button @click="openEditForm(item)" class="btn-edit">✏️ 编辑</button>
-            <button @click="deleteFaq(item.id)" class="btn-delete">️ 删除</button>
+            <template v-if="activeCategory === 'pending'">
+              <button @click="approvePending(item.id)" class="btn-approve">✅ 批准</button>
+              <button @click="rejectPending(item.id)" class="btn-reject">❌ 拒绝</button>
+            </template>
+            <template v-else>
+              <button @click="openEditForm(item)" class="btn-edit">✏️ 编辑</button>
+              <button @click="deleteFaq(item.id)" class="btn-delete">🗑️ 删除</button>
+            </template>
           </div>
         </div>
         <div class="faq-question">{{ item.question }}</div>
         <div class="faq-answer">{{ item.answer }}</div>
+        <div v-if="activeCategory === 'pending' && item.count" class="faq-meta">
+          <span class="badge badge-count">️ {{ item.count }}次</span>
+          <span v-if="item.sensitive" class="badge badge-sensitive">⚠️ 敏感</span>
+          <span v-if="item.auto_approved" class="badge badge-auto">🤖 自动</span>
+        </div>
       </div>
 
       <div v-if="filteredFaqs.length === 0" class="empty-state">
@@ -507,5 +551,60 @@ onMounted(() => {
   color: #888;
   background: #fff;
   border-radius: 12px;
+}
+
+.faq-meta {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-count {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #2196f3;
+}
+
+.badge-sensitive {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ff9800;
+}
+
+.badge-auto {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #4caf50;
+}
+
+.btn-approve, .btn-reject {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: opacity 0.2s;
+}
+
+.btn-approve {
+  background: #4CAF50;
+  color: #fff;
+}
+
+.btn-reject {
+  background: #f44336;
+  color: #fff;
+}
+
+.btn-approve:hover, .btn-reject:hover {
+  opacity: 0.85;
 }
 </style>

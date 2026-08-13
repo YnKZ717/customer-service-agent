@@ -238,5 +238,10 @@
     "question": "生成图片的版权是谁的",
     "answer": "使用 Neowow 生成的图片，版权归创作者（用户）所有。平台不主张版权，但请勿生成侵权内容。",
     "category": "image_generation"
+  },
+  {
+    "question": "你是谁",
+    "answer": "我是Neowow Studio的智能客服助手，可解答平台使用、创作和功能问题。",
+    "category": "auto_approved"
   }
 ]

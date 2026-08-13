@@ -63,6 +63,15 @@ watch(userInput, () => {
   nextTick(() => scrollToBottom())
 })
 
+// 页面加载时自动滚动到底部
+watch(
+  () => messages.value.length,
+  () => {
+    nextTick(() => scrollToBottom())
+  },
+  { immediate: true }
+)
+
 async function sendMessage(text: string) {
   if (!text.trim() || loading.value) return
 
@@ -308,6 +317,8 @@ async function submitFeedback(msg: Message, rating: number) {
   gap: 10px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .quick-btn {
@@ -317,6 +328,7 @@ async function submitFeedback(msg: Message, rating: number) {
   background: #fff;
   cursor: pointer;
   font-size: 14px;
+  white-space: nowrap;
   transition: all 0.2s;
 }
 
@@ -374,11 +386,12 @@ async function submitFeedback(msg: Message, rating: number) {
 }
 
 .message-bubble {
-  max-width: 70%;
+  max-width: 100%;
   padding: 12px 16px;
   border-radius: 16px;
   font-size: 15px;
   line-height: 1.6;
+  word-break: break-word;
 }
 
 .message.user .message-bubble {
