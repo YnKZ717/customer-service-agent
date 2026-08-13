@@ -9,3 +9,18 @@ venv/
 .DS_Store
 frontend/node_modules/
 frontend/dist/
+
+# 数据文件（运行时生成，不提交）
+*.json
+!approved_faqs.json
+!pending_faqs.json
+!backend/approved_faqs.json
+!backend/pending_faqs.json
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/tsconfig.json
+!frontend/tsconfig.node.json
+!frontend/vite.config.ts
+
+# 日志
+backend/logs/

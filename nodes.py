@@ -1,14 +1,22 @@
 """节点定义 — 客服Agent的每个处理步骤"""
-from tools_vector import search_knowledge_base, transfer_to_human, save_pending_faq
+from tools_vector import search_knowledge_base, save_pending_faq
 from tools_chunk import search_chunks
+from ticket_utils import create_ticket, transfer_to_human
 from openai import OpenAI
-from config import LLM_CONFIG
+from config import LLM_CONFIG, FALLBACK_MODELS
+from i18n import t
 
-# 初始化大模型客户端
+# 初始化大模型客户端（主模型）
 client = OpenAI(
     api_key=LLM_CONFIG["api_key"],
     base_url=LLM_CONFIG["base_url"],
 )
+
+# 初始化备用模型客户端
+fallback_clients = []
+for fm in FALLBACK_MODELS:
+    if fm["api_key"] and fm["base_url"]:
+        fallback_clients.append(OpenAI(api_key=fm["api_key"], base_url=fm["base_url"]))
 
 
 # ── 意图关键词映射（与知识库对齐）──────────────────────────
@@ -89,7 +97,7 @@ def answer_from_kb(state: dict) -> dict:
         return {"kb_found": False, "intent": state.get("intent", "general"), "kb_reference": ""}
 
     # 查知识库，获取精确匹配和相关参考
-    question, answer, reference = search_knowledge_base(query, threshold=0.8, return_reference=True)
+    question, answer, reference = search_knowledge_base(query, threshold=0.65, return_reference=True)
 
     if answer is None:
         # 知识库里没有精确匹配，但可能有相关参考
@@ -136,13 +144,16 @@ def chunk_search_node(state: dict) -> dict:
 
 
 def handle_human(state: dict) -> dict:
-    """节点3：转人工 — 生成工单"""
-    result = transfer_to_human(
-        state["user_input"],
-        state.get("history", []),
-    )
-    result["intent"] = state["intent"]
-    return result
+    """节点3：转人工 — 创建真实工单"""
+    user_input = state["user_input"]
+    history = state.get("history", [])
+
+    ticket = create_ticket(user_input, history)
+    return {
+        "response": t("ticket_created", ticket_id=ticket['ticket_id']),
+        "ticket_id": ticket['ticket_id'],
+        "intent": state["intent"],
+    }
 
 
 def general_reply(state: dict) -> dict:
@@ -176,10 +187,32 @@ def general_reply(state: dict) -> dict:
             temperature=0.7,
         )
         reply = response.choices[0].message.content
-
-        # 沉淀：新问题自动记录
-        save_pending_faq(user_input, reply, history)
     except Exception as e:
-        reply = f"系统暂时繁忙，请稍后再试。（错误：{str(e)[:50]}）"
+        # 主模型失败，尝试备用模型
+        print(f"[模型降级] 主模型失败：{str(e)[:80]}")
+        reply = None
+        for i, fb_client in enumerate(fallback_clients):
+            fm = FALLBACK_MODELS[i]
+            try:
+                print(f"[模型降级] 切换到备用模型 {fm['model_name']}...")
+                response = fb_client.chat.completions.create(
+                    model=fm["model_name"],
+                    messages=messages,
+                    max_tokens=500,
+                    temperature=0.7,
+                )
+                reply = response.choices[0].message.content
+                print(f"[模型降级] 备用模型成功")
+                break
+            except Exception as e2:
+                print(f"[模型降级] 备用模型 {i+1} 也失败：{str(e2)[:50]}")
+                continue
+
+        if reply is None:
+            reply = t("service_unavailable") + f"（错误：{str(e)[:50]}）"
+
+    # 沉淀：新问题自动记录
+    if reply and not reply.startswith("系统暂时繁忙") and not reply.startswith("Service temporarily"):
+        save_pending_faq(user_input, reply, history)
 
     return {"response": reply, "intent": "general"}

@@ -1,67 +1,122 @@
 [
   {
-    "question": "API接口文档在哪看",
-    "answer": "平台暂未开放API接口文档，如有需求请联系官方客服。",
-    "category": "approved"
+    "question": "怎么注册账号",
+    "answer": "访问 Neowow 官网，点击右上角'登录'按钮，使用账号完成登录授权即可使用平台功能。",
+    "category": "account"
   },
   {
-    "question": "你好你是谁",
-    "answer": "我是Neowow Studio的智能客服助手，很高兴为你服务。",
-    "category": "approved"
+    "question": "怎么注销账户",
+    "answer": "在账户中心提交注销申请，或联系人工客服处理。注销后数据无法恢复，请谨慎操作。",
+    "category": "account"
   },
   {
-    "question": "免费试用怎么领",
-    "answer": "登录Neowow平台，点击“智能体”中的“免费试用”按钮，即可领取云端服务器试用资格。",
-    "category": "approved"
+    "question": "我想换绑一下手机号",
+    "answer": "登录 Neowow 平台，进入账户中心或安全设置页面，找到手机号绑定选项进行换绑操作。",
+    "category": "account"
   },
   {
-    "question": "用量明细怎么看",
-    "answer": "登录账户中心，点击“用量明细”即可查看模型调用流水及消耗情况。",
-    "category": "approved"
+    "question": "监控日志在哪看",
+    "answer": "首页点击右上角用户头像，选择监控日志即可查看账号安全与操作记录。",
+    "category": "account"
   },
   {
-    "question": "购买记录在哪看",
-    "answer": "在Neowow Studio网页端个人中心或账户设置中查看购买记录；找不到可联系官方客服。",
-    "category": "approved"
-  },
-  {
-    "question": " Credits是什么",
-    "answer": "Credits是CodingPlan智能体套餐中的模型调用额度，可在账户中心查看，支持现金或积分购买。",
-    "category": "approved"
+    "question": "怎么充值积分",
+    "answer": "点击首页右上角\"加号\"，选择金额并扫码支付，积分自动到账。",
+    "category": "billing"
   },
   {
     "question": "怎么更换支付方式",
     "answer": "目前仅支持扫码支付，暂不支持更换其他支付方式。",
-    "category": "approved"
+    "category": "billing"
+  },
+  {
+    "question": "Credits 是什么",
+    "answer": "Credits 是 CodingPlan 智能体套餐中的模型调用额度，可在账户中心查看，支持现金或积分购买。",
+    "category": "billing"
+  },
+  {
+    "question": "购买记录在哪看",
+    "answer": "在 Neowow Studio 网页端个人中心或账户设置中查看购买记录；找不到可联系官方客服。",
+    "category": "billing"
+  },
+  {
+    "question": "用量明细怎么看",
+    "answer": "登录账户中心，点击用量明细即可查看模型调用流水及消耗情况。",
+    "category": "billing"
+  },
+  {
+    "question": "CodingPlan 是什么",
+    "answer": "CodingPlan 是智能体套餐，提供模型调用额度。购买后可在账户中心查看 Credits 使用情况，支持现金或积分购买。",
+    "category": "codingplan"
+  },
+  {
+    "question": "会员有什么权益",
+    "answer": "会员享受：智能体云端服务、CodingPlan 套餐额度、应用市场特权、技能同步、云端数据备份等。详情见智能体界面。",
+    "category": "codingplan"
+  },
+  {
+    "question": "怎么使用智能体",
+    "answer": "进入平台\"智能体\"模块，领取试用资格或订阅 CodingPlan 套餐后即可对话使用。",
+    "category": "agent_service"
+  },
+  {
+    "question": "免费试用怎么领",
+    "answer": "登录 Neowow 平台，点击智能体中的免费试用按钮，即可领取云端服务器试用资格。",
+    "category": "agent_service"
+  },
+  {
+    "question": "在线文档怎么打开",
+    "answer": "在桌面客户端点击帮助，选择在线文档即可打开网页端开发者指南。",
+    "category": "desktop"
+  },
+  {
+    "question": "应用市场怎么用",
+    "answer": "进入应用市场可浏览、购买、预览应用。点击\"在线预览\"无需安装即可体验。也可上传自己开发的应用。",
+    "category": "app_market"
   },
   {
     "question": "技能怎么收藏",
     "answer": "在技能市场点击技能卡片右上角的五角星图标即可收藏，之后可在技能市场或个人中心查看。",
-    "category": "approved"
+    "category": "skill_market"
   },
   {
     "question": "技能详情页能复制技能内容吗",
     "answer": "技能详情页支持直接复制技能内容。",
-    "category": "approved"
+    "category": "skill_market"
   },
   {
-    "question": "监控日志在哪看",
-    "answer": "首页点击右上角用户头像，选择“监控日志”即可查看账号安全与操作记录。",
-    "category": "approved"
+    "question": "部署 Token 怎么获取",
+    "answer": "点击用户头像→\"部署 Token\"→\"生成 Token\"。用于在 CI/CD 流水线中部署发布应用，无需浏览器环境。",
+    "category": "deploy_token"
   },
   {
-    "question": "在线文档怎么打开",
-    "answer": "在桌面客户端点击“帮助”，选择“在线文档”即可打开网页端开发者指南。",
-    "category": "approved"
+    "question": "对话记录会丢失吗",
+    "answer": "不会。客户端产生的对话与配置数据自动备份至云端，可在网页端查看与恢复，保障数据安全。",
+    "category": "backup"
   },
   {
-    "question": "客户端的帮助菜单在哪",
-    "answer": "桌面客户端点击“帮助”即可打开菜单，选择“在线文档”可跳转至网页端开发者指南。",
-    "category": "approved"
+    "question": "我要投诉",
+    "answer": "请描述具体问题，我们会尽快处理；如需人工，请输入\"转人工\"。",
+    "category": "complaint"
   },
   {
-    "question": "如何开启校验",
-    "answer": "请提供具体模块（如智能体或账号安全），以便确认开启校验的准确路径。",
-    "category": "approved"
+    "question": "怎么邀请团队成员",
+    "answer": "目前暂无邀请成员的具体流程，建议直接联系官方人工客服获取指引。",
+    "category": "team"
+  },
+  {
+    "question": "如何加入他人团队",
+    "answer": "目前暂无加入团队的具体流程，建议直接联系官方人工客服获取指引。",
+    "category": "team"
+  },
+  {
+    "question": "怎么导出作品",
+    "answer": "在 Neowow 平台打开作品，点击导出按钮，选择格式确认即可；若按钮未显示请先保存作品，部分格式需消耗积分。",
+    "category": "export"
+  },
+  {
+    "question": "API 接口文档在哪看",
+    "answer": "平台暂未开放 API 接口文档，如有需求请联系官方客服。",
+    "category": "api"
   }
 ]

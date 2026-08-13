@@ -1,7 +1,11 @@
 """工具函数 — 向量搜索版知识库（带类别过滤）"""
+import os
 import chromadb
 import numpy as np
 from text2vec import SentenceModel
+
+# 项目根目录（tools_vector.py 所在目录），用于构建绝对路径
+_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # 加载中文向量化模型（比英文模型对中文支持好很多）
 model = SentenceModel('shibing624/text2vec-base-chinese')
@@ -12,54 +16,29 @@ collection = client.create_collection("faq_knowledge")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 你的任务：
-# 1. 把每条FAQ的类别填对（account/billing/codingplan等）
-# 2. 在第12、13条填你自己想的FAQ
+# 硬编码 FAQ（基础类别定义）
+# approved_faqs.json 中的内容会自动合并进来
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FAQ_DATA = [
-    # (问题, 答案, 类别)
-    # 第1条：注册登录
-    ("怎么注册账号", "访问Neowow官网 https://app.neowow.studio，点击右上角'登录'按钮，使用账号完成登录授权。注册成功后即可使用平台功能。", "account"),
-
-    # 第2条：积分充值
-    ("怎么充值积分", "点击右上角'加号'按钮，选择充值金额，点击'生成二维码'，手机扫码支付即可。积分到账后可用于购买套餐和调用模型。", "billing"),
-
-    # 第2.1条：充值变体
-    ("我要充值", "点击右上角'加号'按钮，选择充值金额，点击'生成二维码'，手机扫码支付即可。积分到账后可用于购买套餐和调用模型。", "billing"),
-
-    # 第3条：CodingPlan套餐
-    ("CodingPlan是什么", "CodingPlan是智能体套餐，提供模型调用额度。购买后可在账户中心查看Credits使用情况，支持现金或积分购买。", "codingplan"),
-
-    # 第4条：智能体服务
-    ("怎么使用智能体", "进入'智能体'模块，可领取云端服务器试用资格，或订阅CodingPlan套餐。购买后即可与智能体对话创作。", "agent_service"),
-
-    # 第5条：桌面客户端
-    ("桌面客户端怎么安装", "在智能体界面下载客户端，解压后双击图标自动安装。使用网页端账号登录，模型额度来自网页端订阅。", "desktop"),
-
-    # 第6条：应用市场
-    ("应用市场怎么用", "进入应用市场可浏览、购买、预览应用。点击'在线预览'无需安装即可体验。也可上传自己开发的应用。", "app_market"),
-
-    # 第7条：技能市场
-    ("技能市场在哪", "技能市场提供各类创作技能，可在网页端和桌面客户端使用。网页端订阅的技能自动同步至客户端。", "skill_market"),
-
-    # 第8条：部署Token
-    ("部署Token怎么获取", "点击用户头像→'部署Token'→'生成Token'。用于在CI/CD流水线中部署发布应用，无需浏览器环境。", "deploy_token"),
-
-    # 第9条：数据备份
-    ("对话记录会丢失吗", "不会。客户端产生的对话与配置数据自动备份至云端，可在网页端查看与恢复，保障数据安全。", "backup"),
-
-    # 第10条：会员权益
-    ("会员有什么权益", "会员享受：智能体云端服务、CodingPlan套餐额度、应用市场特权、技能同步、云端数据备份等。详情见智能体界面。", "membership"),
-
-    # 第11条：投诉
-    ("我要投诉", "非常抱歉给您带来不好的体验。请详细描述您遇到的问题，我们会尽快处理。如需人工客服，请输入'转人工'。", "complaint"),
-
-    # 第12条：注销账户
-    ("怎么注销账户", "如需注销账户，请在账户中心提交注销申请，或联系人工客服处理。注销后数据将无法恢复，请谨慎操作。", "account"),
+    # 类别映射说明：
+    # account      - 账户管理（注册、注销、换绑、监控日志）
+    # billing      - 充值支付（积分、Credits、购买记录、用量明细）
+    # codingplan   - 套餐服务（CodingPlan、会员权益）
+    # agent_service- 智能体使用（免费试用、使用智能体）
+    # desktop      - 桌面客户端（安装、在线文档）
+    # app_market   - 应用市场（浏览、购买、上传）
+    # skill_market - 技能市场（收藏、复制）
+    # deploy_token - 部署 Token（CI/CD 发布）
+    # backup       - 数据备份（对话记录、云端备份）
+    # complaint    - 投诉反馈
+    # team         - 团队协作（邀请、加入）
+    # export       - 作品导出
+    # api          - API 接口
 ]
 
 # ── 加载已批准的FAQ（从文件）──────────────────────────
-APPROVED_FAQ_FILE = "approved_faqs.json"
+# 使用绝对路径，避免从不同目录运行时路径解析错误
+APPROVED_FAQ_FILE = os.path.join(_PROJECT_ROOT, "approved_faqs.json")
 
 
 def load_approved_faqs():
@@ -135,7 +114,7 @@ def keyword_search(query: str, top_k: int = 3) -> list[int]:
     return [idx for idx, score in sorted_indices[:top_k] if score >= 1]
 
 
-def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.8, return_reference: bool = False) -> tuple[str, str, str]:
+def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.65, return_reference: bool = False) -> tuple[str, str, str]:
     """混合搜索：关键词 + 向量双路
 
     策略：
@@ -180,23 +159,20 @@ def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.8
     if not merged_results:
         return None, None, ""
 
-    # ── 计算向量相似度 ─────────────────────────────────────
+    # ── 计算向量相似度 ────────────────────────────────────
+    # 重新向量化每个候选问题，计算与 query 的相似度
     similarities = {}
-    if vector_results.get('embeddings') and len(vector_results['embeddings'][0]) > 0:
-        for i, result in enumerate(merged_results):
-            if i < len(vector_results['embeddings'][0]):
-                doc_vector = np.array(vector_results['embeddings'][0][i])
-                sim = np.dot(query_vector, doc_vector) / (np.linalg.norm(query_vector) * np.linalg.norm(doc_vector))
-                similarities[result['question']] = sim
-            else:
-                similarities[result['question']] = 0.0
+    for result in merged_results:
+        doc_vector = model.encode(result['question'])
+        sim = np.dot(query_vector, doc_vector) / (np.linalg.norm(query_vector) * np.linalg.norm(doc_vector))
+        similarities[result['question']] = sim
 
     # ── 判断是否匹配 ───────────────────────────────────────
     # 关键词命中的，阈值降到0.6；向量命中的，阈值0.8
     best_match = None
     for result in merged_results:
         sim = similarities.get(result['question'], 0.0)
-        required_sim = 0.6 if result['source'] == 'keyword' else 0.8
+        required_sim = 0.65
         if sim >= required_sim:
             best_match = result
             break
@@ -211,8 +187,15 @@ def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.8
     return None, None, reference_text if return_reference else ""
 
 
-# ─ 沉淀机制：未匹配的问题记录到待确认队列 ──
-PENDING_FAQ_FILE = "pending_faqs.json"
+# ─ 沉淀机制：自动 FAQ 系统 ──
+# 使用绝对路径，避免从不同目录运行时路径解析错误
+PENDING_FAQ_FILE = os.path.join(_PROJECT_ROOT, "pending_faqs.json")
+
+# 敏感词列表（命中后标记人工优先）
+SENSITIVE_KEYWORDS = ["投诉", "退费", "退款", "维权", "举报", "法律", "起诉", "欺诈", "骗子"]
+
+# 自动批准阈值（被问≥N 次自动入库）
+AUTO_APPROVE_THRESHOLD = 2
 
 
 def refine_answer(question: str, raw_answer: str) -> str:
@@ -247,44 +230,37 @@ def refine_answer(question: str, raw_answer: str) -> str:
         return raw_answer  # 失败就用原始答案
 
 
-def save_pending_faq(question: str, llm_answer: str, history: list = None):
-    """保存未匹配的问题到待确认队列（自动提炼答案）"""
-    import json
-    from datetime import datetime
+def is_sensitive(question: str) -> bool:
+    """检测是否包含敏感词"""
+    return any(kw in question for kw in SENSITIVE_KEYWORDS)
 
-    # 读取现有队列
-    pending = []
-    try:
-        with open(PENDING_FAQ_FILE, 'r', encoding='utf-8') as f:
-            pending = json.load(f)
-    except FileNotFoundError:
-        pass
 
-    # 检查是否已存在相同问题
-    for p in pending:
-        if p['question'] == question:
-            print(f"[沉淀] 问题已存在，跳过：{question}")
-            return
+def find_similar_pending(question: str, pending: list, threshold: float = 0.7) -> int:
+    """在 pending 列表中找相似问题，返回索引（-1 表示没找到）"""
+    if not pending or not question:
+        return -1
 
-    # 提炼答案
-    refined_answer = refine_answer(question, llm_answer)
+    # 向量化
+    q_vector = model.encode(question)
 
-    # 添加新提案
-    proposal = {
-        "question": question,
-        "answer": refined_answer,
-        "original_answer": llm_answer,  # 保留原始答案供参考
-        "history": history[-4:] if history else [],  # 最近2轮上下文
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "status": "pending",  # pending / approved / rejected
-    }
-    pending.append(proposal)
+    # 找最相似的
+    best_idx = -1
+    best_sim = 0
 
-    # 写回文件
-    with open(PENDING_FAQ_FILE, 'w', encoding='utf-8') as f:
-        json.dump(pending, f, ensure_ascii=False, indent=2)
+    for i, p in enumerate(pending):
+        if p.get("status") in ["approved", "rejected"]:
+            continue  # 跳过已处理的
 
-    print(f"[沉淀] 新问题已记录：{question}")
+        p_vector = model.encode(p["question"])
+        sim = np.dot(q_vector, p_vector) / (np.linalg.norm(q_vector) * np.linalg.norm(p_vector))
+
+        if sim > best_sim:
+            best_sim = sim
+            best_idx = i
+
+    if best_sim >= threshold:
+        return best_idx
+    return -1
 
 
 def load_pending_faqs() -> list:
@@ -297,8 +273,113 @@ def load_pending_faqs() -> list:
         return []
 
 
+def save_pending_faq(question: str, llm_answer: str, history: list = None):
+    """自动 FAQ 系统：智能去重 + 频次统计 + 自动批准"""
+    import json
+    from datetime import datetime
+
+    # 读取现有队列
+    pending = []
+    try:
+        with open(PENDING_FAQ_FILE, 'r', encoding='utf-8') as f:
+            pending = json.load(f)
+    except FileNotFoundError:
+        pass
+
+    # 1. 找相似问题（向量去重）
+    similar_idx = find_similar_pending(question, pending, threshold=0.85)
+
+    if similar_idx >= 0:
+        # 相似问题已存在，计数 +1，更新答案
+        pending[similar_idx]["count"] = pending[similar_idx].get("count", 1) + 1
+        pending[similar_idx]["last_asked"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # 保留最新答案（更准确）
+        refined_answer = refine_answer(question, llm_answer)
+        pending[similar_idx]["answer"] = refined_answer
+        pending[similar_idx]["original_answer"] = llm_answer
+
+        print(f"[自动 FAQ] 相似问题合并：'{question}' → '{pending[similar_idx]['question']}' (计数：{pending[similar_idx]['count']})")
+
+        # 2. 检查是否达到自动批准阈值
+        if pending[similar_idx]["count"] >= AUTO_APPROVE_THRESHOLD:
+            if not pending[similar_idx].get("auto_approved", False):
+                # 自动批准
+                pending[similar_idx]["status"] = "approved"
+                pending[similar_idx]["auto_approved"] = True
+                pending[similar_idx]["approved_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+                # 添加到已批准文件
+                approved = []
+                try:
+                    with open(APPROVED_FAQ_FILE, 'r', encoding='utf-8') as f:
+                        approved = json.load(f)
+                except FileNotFoundError:
+                    pass
+
+                approved.append({
+                    "question": pending[similar_idx]["question"],
+                    "answer": pending[similar_idx]["answer"],
+                    "category": "auto_approved"
+                })
+                with open(APPROVED_FAQ_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(approved, f, ensure_ascii=False, indent=2)
+
+                # 增量添加到向量索引
+                new_id = f"faq_auto_{len(approved) - 1}"
+                new_vector = model.encode(pending[similar_idx]["question"]).tolist()
+                collection.add(
+                    ids=[new_id],
+                    embeddings=[new_vector],
+                    documents=[pending[similar_idx]["answer"]],
+                    metadatas=[{"question": pending[similar_idx]["question"], "category": "auto_approved"}]
+                )
+
+                FAQ_DATA.append((pending[similar_idx]["question"], pending[similar_idx]["answer"], "auto_approved"))
+
+                print(f"[自动 FAQ] ✅ 自动批准：'{pending[similar_idx]['question']}' (被问{pending[similar_idx]['count']}次)")
+
+        # 写回文件
+        with open(PENDING_FAQ_FILE, 'w', encoding='utf-8') as f:
+            json.dump(pending, f, ensure_ascii=False, indent=2)
+        return
+
+    # 3. 新问题，创建提案
+    refined_answer = refine_answer(question, llm_answer)
+    sensitive = is_sensitive(question)
+
+    proposal = {
+        "question": question,
+        "answer": refined_answer,
+        "original_answer": llm_answer,
+        "count": 1,
+        "first_asked": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "last_asked": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "history": history[-4:] if history else [],
+        "status": "pending",
+        "sensitive": sensitive,  # 敏感词标记
+        "auto_approved": False,
+    }
+
+    # 敏感问题标记"人工优先"
+    if sensitive:
+        proposal["priority"] = "high"
+        proposal["reason"] = "包含敏感词，建议人工审核"
+        print(f"[自动 FAQ] ⚠️ 敏感问题：'{question}' → 标记人工优先")
+    else:
+        proposal["priority"] = "normal"
+
+    pending.append(proposal)
+
+    # 写回文件
+    with open(PENDING_FAQ_FILE, 'w', encoding='utf-8') as f:
+        json.dump(pending, f, ensure_ascii=False, indent=2)
+
+    print(f"[自动 FAQ]  新问题：'{question}' (计数：1)")
+
+
 def approve_pending_faq(index: int) -> bool:
-    """批准提案，持久化到文件并重建向量索引"""
+    """手动批准提案，持久化到文件并增量添加向量索引"""
     import json
     pending = load_pending_faqs()
     if index < 0 or index >= len(pending):
@@ -332,9 +413,19 @@ def approve_pending_faq(index: int) -> bool:
 
     print(f"已批准：{proposal['question']}")
 
-    # 重建向量索引
-    init_knowledge_base()
-    print(f"向量索引已重建，共 {len([f for f in FAQ_DATA if f[0]])} 条FAQ")
+    # 增量添加到向量索引
+    new_id = f"faq_manual_{len(approved) - 1}"
+    new_vector = model.encode(proposal['question']).tolist()
+    collection.add(
+        ids=[new_id],
+        embeddings=[new_vector],
+        documents=[proposal['answer']],
+        metadatas=[{"question": proposal['question'], "category": "approved"}]
+    )
+
+    FAQ_DATA.append((proposal['question'], proposal['answer'], 'approved'))
+
+    print(f"向量索引已增量更新，共 {len([f for f in FAQ_DATA if f[0]])} 条FAQ")
     return True
 
 
@@ -356,18 +447,3 @@ def reject_pending_faq(index: int) -> bool:
 
     print(f"已拒绝：{proposal['question']}")
     return True
-
-
-def transfer_to_human(user_input: str, history: list) -> dict:
-    """转接人工客服，生成工单信息"""
-    ticket_id = f"TK-{hash(user_input) % 10000:04d}"
-    summary = user_input[:50]
-    return {
-        "response": f"已为您转接人工客服，工单号：{ticket_id}。客服将尽快与您联系。",
-        "ticket_id": ticket_id,
-        "ticket_summary": summary,
-    }
-
-
-# 初始化知识库
-init_knowledge_base()

@@ -1,14 +1,43 @@
 """FastAPI 后端 — 客服Agent API服务"""
 import sys
 import os
+import json
+import time
+import logging
+import hashlib
+from datetime import datetime
+from collections import defaultdict
+
+# ── 禁止 HuggingFace 联网检查（必须在所有 import 之前）──
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
+# 加载环境变量
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+
+# ── 日志系统 ──
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, "server.log"), encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logger = logging.getLogger("backend")
 
 # 将父目录加入路径，以导入现有的 graph/nodes/tools 模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Optional, List
 import uvicorn
 
 # 导入现有模块
@@ -19,6 +48,9 @@ from tools_vector import (
     reject_pending_faq,
     FAQ_DATA,
 )
+from ticket_utils import load_tickets, save_tickets, create_ticket
+from i18n import set_language, get_language, t
+from ab_test import assign_user, get_strategy, record_experiment, get_experiment_results
 
 # ── FastAPI 应用 ──
 app = FastAPI(title="Neowow 智能客服 API")
@@ -32,14 +64,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ── 请求日志中间件 ──
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    try:
+        response = await call_next(request)
+        duration = time.time() - start
+        logger.info(f"{request.method} {request.url.path} -> {response.status_code} ({duration:.2f}s)")
+        return response
+    except Exception as e:
+        duration = time.time() - start
+        logger.error(f"{request.method} {request.url.path} -> ERROR: {e} ({duration:.2f}s)")
+        return JSONResponse(status_code=500, content={"error": "服务器内部错误"})
+
+
+# ── 全局异常处理 ──
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"未捕获异常: {request.method} {request.url.path}")
+    return JSONResponse(status_code=500, content={"error": "服务器内部错误，请稍后再试"})
+
+
 # ── 初始化 Agent（全局单例）──
+logger.info("正在初始化 Agent...")
 agent_app = build_graph()
+logger.info("Agent 初始化完成，FAQ 数量: %d", len(FAQ_DATA))
 
 
 # ── 数据模型 ──
 class ChatRequest(BaseModel):
-    user_input: str
-    history: Optional[list] = []  # [(role, content), ...]
+    user_input: str = Field(..., min_length=1, max_length=500, description="用户问题")
+    history: Optional[list] = Field(default=[], description="对话历史")
 
 
 class ChatResponse(BaseModel):
@@ -51,7 +108,87 @@ class ChatResponse(BaseModel):
     ticket_id: str = ""
 
 
+class ErrorResponse(BaseModel):
+    error: str
+
+
+# ─ API 鉴权 ──
+API_KEY = os.getenv("API_KEY", "neowow-dev-2026")
+
+def verify_api_key(x_api_key: str = Header(None)):
+    """验证 API Key"""
+    if x_api_key != API_KEY:
+        logger.warning("API Key 验证失败: %s", x_api_key)
+        raise HTTPException(status_code=401, detail="无效的 API Key")
+    return x_api_key
+
+
+# ── 限流 ──
+RATE_LIMIT = 200  # 每分钟最多30次请求
+rate_limit_store = defaultdict(list)
+
+def check_rate_limit(request: Request, _key: str = Depends(verify_api_key)):
+    """检查请求频率限制"""
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    # 清理60秒前的记录
+    rate_limit_store[ip] = [t for t in rate_limit_store[ip] if now - t < 60]
+
+    if len(rate_limit_store[ip]) >= RATE_LIMIT:
+        logger.warning("限流触发: IP=%s, 请求数=%d", ip, len(rate_limit_store[ip]))
+        raise HTTPException(status_code=429, detail="请求过于频繁，请稍后再试")
+
+    rate_limit_store[ip].append(now)
+    return ip
+
+
 # ── API 接口 ──
+
+class LanguageRequest(BaseModel):
+    lang: str = Field(..., pattern="^(zh|en)$", description="语言代码：zh 或 en")
+
+
+@app.post("/api/language")
+def set_language_api(request: LanguageRequest, _ip: str = Depends(check_rate_limit)):
+    """切换语言"""
+    set_language(request.lang)
+    logger.info("语言切换为：%s", request.lang)
+    return {"language": request.lang}
+
+
+@app.get("/api/ab/strategy/{user_id}")
+def get_user_strategy(user_id: str, _ip: str = Depends(check_rate_limit)):
+    """获取用户的 A/B 测试策略"""
+    return get_strategy(user_id)
+
+
+@app.post("/api/ab/record")
+def record_ab_experiment(request: dict, _ip: str = Depends(check_rate_limit)):
+    """记录 A/B 测试数据"""
+    try:
+        record_experiment(
+            request.get("user_id", ""),
+            request.get("strategy", ""),
+            request.get("question", ""),
+            request.get("answer", ""),
+            request.get("rating"),
+        )
+        return {"message": "记录成功"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ab/results")
+def get_ab_results(_ip: str = Depends(check_rate_limit)):
+    """获取 A/B 测试结果"""
+    return get_experiment_results()
+
+
+@app.get("/api/language")
+def get_language_api(_ip: str = Depends(check_rate_limit)):
+    """获取当前语言"""
+    return {"language": get_language()}
+
 
 @app.get("/api/health")
 def health_check():
@@ -59,10 +196,12 @@ def health_check():
     return {"status": "ok", "faq_count": len(FAQ_DATA)}
 
 
-@app.post("/api/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
+@app.post("/api/chat", response_model=ChatResponse, responses={500: {"model": ErrorResponse}})
+def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
     """客服对话接口"""
     try:
+        logger.info("用户提问: %s (历史: %d 轮)", request.user_input[:50], len(request.history or []) // 2)
+
         result = agent_app.invoke({
             "user_input": request.user_input,
             "intent": "",
@@ -77,33 +216,105 @@ def chat(request: ChatRequest):
             "ticket_summary": "",
         })
 
+        response_text = result.get("response", "")
+        kb_found = result.get("kb_found", False)
+        source = "知识库" if kb_found else "大模型"
+        logger.info("回答来源: %s | 分类: %s | 回答长度: %d 字", source, result.get("kb_category", "-"), len(response_text))
+        # 记录统计
+        stat_type = "kb" if kb_found else "llm"
+        record_stat(stat_type)
+
         return ChatResponse(
-            response=result.get("response", ""),
+            response=response_text,
             intent=result.get("intent", ""),
-            kb_found=result.get("kb_found", False),
+            kb_found=kb_found,
             kb_category=result.get("kb_category", ""),
             chunk_found=result.get("chunk_found", False),
             ticket_id=result.get("ticket_id", ""),
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("处理聊天请求时出错: %s", str(e))
+        raise HTTPException(status_code=500, detail="处理请求失败，请稍后再试")
 
 
 @app.get("/api/pending")
-def get_pending():
+def get_pending(_ip: str = Depends(check_rate_limit)):
     """获取待确认 FAQ 列表"""
-    pending = load_pending_faqs()
-    items = []
-    for real_idx, p in enumerate(pending):
-        if p['status'] == 'pending':
-            item = dict(p)
-            item['_realIndex'] = real_idx
-            items.append(item)
-    return {"items": items, "total": len(items)}
+    try:
+        pending = load_pending_faqs()
+        items = []
+        for real_idx, p in enumerate(pending):
+            if p['status'] == 'pending':
+                item = dict(p)
+                item['_realIndex'] = real_idx
+                items.append(item)
+        logger.info("返回待确认列表: %d 条", len(items))
+        return {"items": items, "total": len(items)}
+    except Exception as e:
+        logger.exception("获取待确认列表失败: %s", str(e))
+        raise HTTPException(status_code=500, detail="获取数据失败")
+
+
+class FaqCreateRequest(BaseModel):
+    question: str = Field(..., min_length=1, description="问题")
+    answer: str = Field(..., min_length=1, description="答案")
+    category: str = Field(..., description="分类")
+
+
+@app.post("/api/faqs")
+def add_faq(request: FaqCreateRequest, _ip: str = Depends(check_rate_limit)):
+    """新增 FAQ"""
+    try:
+        from tools_vector import init_knowledge_base
+        FAQ_DATA.append((request.question, request.answer, request.category))
+        init_knowledge_base()
+        logger.info("新增 FAQ: %s", request.question)
+        return {"message": "已添加", "question": request.question}
+    except Exception as e:
+        logger.exception("新增 FAQ 失败: %s", str(e))
+        raise HTTPException(status_code=500, detail="添加失败")
+
+
+@app.put("/api/faqs/{index}")
+def update_faq(index: int, request: FaqCreateRequest, _ip: str = Depends(check_rate_limit)):
+    """更新 FAQ"""
+    try:
+        from tools_vector import init_knowledge_base
+        if index < 0 or index >= len(FAQ_DATA):
+            raise HTTPException(status_code=404, detail="FAQ 不存在")
+        FAQ_DATA[index] = (request.question, request.answer, request.category)
+        init_knowledge_base()
+        logger.info("更新 FAQ: %s", request.question)
+        return {"message": "已更新", "question": request.question}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("更新 FAQ 失败: %s", str(e))
+        raise HTTPException(status_code=500, detail="更新失败")
+
+
+@app.delete("/api/faqs/{index}")
+def delete_faq(index: int, _ip: str = Depends(check_rate_limit)):
+    """删除 FAQ"""
+    try:
+        from tools_vector import init_knowledge_base
+        if index < 0 or index >= len(FAQ_DATA):
+            raise HTTPException(status_code=404, detail="FAQ 不存在")
+        removed = FAQ_DATA.pop(index)
+        init_knowledge_base()
+        logger.info("删除 FAQ: %s", removed[0])
+        return {"message": "已删除", "question": removed[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("删除 FAQ 失败: %s", str(e))
+        raise HTTPException(status_code=500, detail="删除失败")
 
 
 @app.get("/api/faqs")
-def get_faqs():
+def get_faqs(_ip: str = Depends(check_rate_limit)):
     """获取当前知识库所有 FAQ"""
     return {
         "items": [
@@ -115,23 +326,273 @@ def get_faqs():
 
 
 @app.post("/api/approve/{index}")
-def approve_faq(index: int):
+def approve_faq(index: int, _ip: str = Depends(check_rate_limit)):
     """批准 FAQ 提案"""
-    success = approve_pending_faq(index)
-    if success:
-        return {"message": "已批准", "index": index}
-    raise HTTPException(status_code=400, detail="批准失败")
+    try:
+        logger.info("批准提案: index=%d", index)
+        success = approve_pending_faq(index)
+        if success:
+            logger.info("提案 %d 已批准，已重建向量索引", index)
+            return {"message": "已批准", "index": index}
+        raise HTTPException(status_code=400, detail="批准失败")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("批准提案失败: %s", str(e))
+        raise HTTPException(status_code=500, detail="操作失败")
 
 
 @app.post("/api/reject/{index}")
-def reject_faq(index: int):
+def reject_faq(index: int, _ip: str = Depends(check_rate_limit)):
     """拒绝 FAQ 提案"""
-    success = reject_pending_faq(index)
-    if success:
-        return {"message": "已拒绝", "index": index}
-    raise HTTPException(status_code=400, detail="拒绝失败")
+    try:
+        logger.info("拒绝提案: index=%d", index)
+        success = reject_pending_faq(index)
+        if success:
+            logger.info("提案 %d 已拒绝", index)
+            return {"message": "已拒绝", "index": index}
+        raise HTTPException(status_code=400, detail="拒绝失败")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("拒绝提案失败: %s", str(e))
+        raise HTTPException(status_code=500, detail="操作失败")
+
+
+# ── 用户反馈 ──
+FEEDBACK_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "feedback.json")
+
+
+def load_feedback() -> list:
+    try:
+        with open(FEEDBACK_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+
+def save_feedback(feedback: list):
+    with open(FEEDBACK_FILE, 'w', encoding='utf-8') as f:
+        json.dump(feedback, f, ensure_ascii=False, indent=2)
+
+
+class FeedbackRequest(BaseModel):
+    message_id: str = Field(..., description="消息 ID")
+    rating: int = Field(..., ge=1, le=5, description="评分 1-5")
+    comment: Optional[str] = Field(default="", description="可选评论")
+
+
+@app.post("/api/feedback")
+def submit_feedback(request: FeedbackRequest, _ip: str = Depends(check_rate_limit)):
+    """提交用户反馈"""
+    try:
+        feedback = load_feedback()
+        feedback.append({
+            "message_id": request.message_id,
+            "rating": request.rating,
+            "comment": request.comment,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        })
+        save_feedback(feedback)
+        logger.info("收到反馈：评分=%d", request.rating)
+        return {"message": "感谢你的反馈！"}
+    except Exception as e:
+        logger.exception("提交反馈失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="提交失败")
+
+
+@app.get("/api/feedback/stats")
+def get_feedback_stats(_ip: str = Depends(check_rate_limit)):
+    """获取反馈统计"""
+    try:
+        feedback = load_feedback()
+        total = len(feedback)
+        if total == 0:
+            return {"total": 0, "average": 0, "distribution": {}}
+
+        avg = sum(f['rating'] for f in feedback) / total
+        dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        for f in feedback:
+            dist[f['rating']] = dist.get(f['rating'], 0) + 1
+
+        return {"total": total, "average": round(avg, 2), "distribution": dist}
+    except Exception as e:
+        logger.exception("获取反馈统计失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="获取统计失败")
+
+
+# ── 成本统计 ──
+STATS_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stats.json")
+
+
+def load_stats() -> dict:
+    try:
+        with open(STATS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {
+            "total_calls": 0,
+            "total_tokens": 0,
+            "kb_hits": 0,
+            "llm_calls": 0,
+            "tickets_created": 0,
+            "daily": {},
+        }
+
+
+def save_stats(stats: dict):
+    with open(STATS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(stats, f, ensure_ascii=False, indent=2)
+
+
+def record_stat(stat_type: str, tokens: int = 0):
+    """记录一次 API 调用统计"""
+    stats = load_stats()
+    stats["total_calls"] += 1
+    stats["total_tokens"] += tokens
+
+    if stat_type == "kb":
+        stats["kb_hits"] += 1
+    elif stat_type == "llm":
+        stats["llm_calls"] += 1
+    elif stat_type == "ticket":
+        stats["tickets_created"] += 1
+
+    # 按日期统计
+    today = datetime.now().strftime("%Y-%m-%d")
+    if today not in stats["daily"]:
+        stats["daily"][today] = {"calls": 0, "tokens": 0, "kb": 0, "llm": 0}
+    stats["daily"][today]["calls"] += 1
+    stats["daily"][today]["tokens"] += tokens
+    if stat_type == "kb":
+        stats["daily"][today]["kb"] += 1
+    elif stat_type == "llm":
+        stats["daily"][today]["llm"] += 1
+
+    save_stats(stats)
+    return stats
+
+
+@app.get("/api/stats")
+def get_stats(_ip: str = Depends(check_rate_limit)):
+    """获取成本统计"""
+    try:
+        stats = load_stats()
+        # 计算命中率
+        total = stats["kb_hits"] + stats["llm_calls"]
+        hit_rate = round(stats["kb_hits"] / total * 100, 2) if total > 0 else 0
+        return {
+            **stats,
+            "kb_hit_rate": hit_rate,
+        }
+    except Exception as e:
+        logger.exception("获取统计失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="获取统计失败")
+
+
+# ── 工单 API ──
+
+class TicketCreateRequest(BaseModel):
+    user_input: str = Field(..., min_length=1, max_length=500, description="用户问题")
+    history: Optional[list] = Field(default=[], description="对话历史")
+
+
+class TicketReplyRequest(BaseModel):
+    reply: str = Field(..., min_length=1, description="客服回复内容")
+
+
+@app.post("/api/tickets")
+def create_ticket_api(request: TicketCreateRequest, _ip: str = Depends(check_rate_limit)):
+    """创建工单"""
+    try:
+        ticket = create_ticket(request.user_input, request.history or [])
+        logger.info("工单创建成功：%s", ticket['ticket_id'])
+        return {
+            "ticket_id": ticket['ticket_id'],
+            "message": f"工单已创建，编号：{ticket['ticket_id']}。客服将尽快处理。",
+        }
+    except Exception as e:
+        logger.exception("创建工单失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="创建工单失败")
+
+
+@app.get("/api/tickets")
+def get_tickets(status: Optional[str] = None, _ip: str = Depends(check_rate_limit)):
+    """获取工单列表（可按状态筛选）"""
+    try:
+        tickets = load_tickets()
+        if status:
+            tickets = [t for t in tickets if t['status'] == status]
+        # 倒序排列，最新的在前
+        tickets.reverse()
+        logger.info("返回工单列表：%d 条 (筛选：%s)", len(tickets), status or "全部")
+        return {"items": tickets, "total": len(tickets)}
+    except Exception as e:
+        logger.exception("获取工单列表失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="获取工单失败")
+
+
+@app.get("/api/tickets/{ticket_id}")
+def get_ticket(ticket_id: str, _ip: str = Depends(check_rate_limit)):
+    """获取单个工单详情"""
+    try:
+        tickets = load_tickets()
+        for t in tickets:
+            if t['ticket_id'] == ticket_id:
+                return t
+        raise HTTPException(status_code=404, detail="工单不存在")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("获取工单详情失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="获取工单失败")
+
+
+@app.post("/api/tickets/{ticket_id}/reply")
+def reply_ticket(ticket_id: str, request: TicketReplyRequest, _ip: str = Depends(check_rate_limit)):
+    """客服回复工单"""
+    try:
+        tickets = load_tickets()
+        for t in tickets:
+            if t['ticket_id'] == ticket_id:
+                t['reply'] = request.reply
+                t['status'] = 'resolved'
+                t['replied_at'] = datetime.now().strftime("%Y-%m-%d %H:%M")
+                save_tickets(tickets)
+                logger.info("工单 %s 已回复", ticket_id)
+                return {"message": "回复成功", "ticket_id": ticket_id}
+        raise HTTPException(status_code=404, detail="工单不存在")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("回复工单失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="回复失败")
+
+
+@app.post("/api/tickets/{ticket_id}/status")
+def update_ticket_status(ticket_id: str, status: str, _ip: str = Depends(check_rate_limit)):
+    """更新工单状态（pending/in_progress/resolved/closed）"""
+    try:
+        tickets = load_tickets()
+        for t in tickets:
+            if t['ticket_id'] == ticket_id:
+                t['status'] = status
+                save_tickets(tickets)
+                logger.info("工单 %s 状态更新为 %s", ticket_id, status)
+                return {"message": "状态已更新", "ticket_id": ticket_id, "status": status}
+        raise HTTPException(status_code=404, detail="工单不存在")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("更新工单状态失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="更新失败")
 
 
 # ── 启动 ──
 if __name__ == "__main__":
+    logger.info("=" * 50)
+    logger.info("Neowow 智能客服 API 启动中...")
+    logger.info("地址: http://0.0.0.0:8001")
+    logger.info("日志目录: %s", LOG_DIR)
+    logger.info("=" * 50)
     uvicorn.run(app, host="0.0.0.0", port=8001)
