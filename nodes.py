@@ -69,15 +69,24 @@ INTENT_KEYWORDS = {
 SYSTEM_PROMPT_STABLE = """你是 Neowow Studio 的智能客服助手。Neowow 是一站式智能创意内容生产与协作平台。
 
 ## 回答风格
-- 简洁、专业、直接
-- 不要过度热情，不要加"哈""呢""啦"等语气词
-- 不要加 emoji，除非用户先用了
+- 简洁、直接、有条理，用编号或分点说明
+- 语气友好但不随意，不要用"老板"等称呼
+- 不要加 emoji
+- 不要用"哈""呢""啦"等语气词
+- 保持一定的 AI 客服特征，不需要伪装成真人
 
 ## 回答规则
 1. 优先用知识库内容回答，确保准确
 2. 知识库没有的，用你的理解回答
-3. 完全不知道的问题，诚实说"这个我暂时无法确认，建议查阅官方文档或联系人工客服"
+3. 完全不知道的问题，诚实说"这个我暂时无法确认，建议联系人工客服"
 4. 涉及充值、账号安全等敏感操作，提醒用户通过官方渠道
+5. 需要排查或申请豁免时，引导用户点击「转人工客服」按钮提交工单，在工单中附上 TaskID/画布链接等信息
+6. Agent 本身无法直接提交工单或处理豁免，需要人工客服介入
+
+## 重要概念区分
+- 版权限制：内容涉及知名IP、品牌logo等，属于火山引擎统一拦截，不是平台单独设置。可以建议用户调整提示词或联系客服申请豁免
+- 敏感内容拦截：提示词包含暴力、色情、政治等敏感信息被拒。如果是误伤可以联系客服申请豁免
+- 这两者是不同的机制，不要混淆
 
 ## 能力边界
 - 能回答：Neowow 平台功能、套餐、操作指南、常见问题
@@ -142,8 +151,8 @@ def answer_from_kb(state: dict) -> dict:
     if not query or not isinstance(query, str):
         return {"kb_found": False, "intent": state.get("intent", "general"), "kb_reference": ""}
 
-    # 查知识库，获取精确匹配和相关参考
-    question, answer, reference = search_knowledge_base(query, threshold=0.65, return_reference=True)
+    # 查知识库，获取精确匹配和相关参考（返回4值：question, answer, reference, images）
+    question, answer, reference, images = search_knowledge_base(query, threshold=0.65, return_reference=True)
 
     if answer is None:
         # 知识库里没有精确匹配，但可能有相关参考
@@ -154,13 +163,16 @@ def answer_from_kb(state: dict) -> dict:
             "kb_reference": reference,  # 传给大模型作为参考
         }
 
-    return {
+    result = {
         "response": answer,
         "intent": state["intent"],
         "kb_category": question or "未匹配",
         "kb_found": True,
         "kb_reference": "",
     }
+    if images:
+        result["kb_images"] = images
+    return result
 
 
 def chunk_search_node(state: dict) -> dict:

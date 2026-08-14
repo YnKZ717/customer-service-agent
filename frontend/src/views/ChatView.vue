@@ -17,6 +17,7 @@ interface Message {
   ticketId?: string
   id?: string  // 唯一 ID，用于反馈
   rated?: boolean  // 是否已评价
+  images?: string[]  // FAQ 命中的截图
 }
 
 // ── localStorage 持久化 ──
@@ -91,11 +92,15 @@ async function sendMessage(text: string) {
       body: JSON.stringify({ user_input: text, history: chatHistory.value }),
     })
     const data = await resp.json()
-    messages.value.push({
+    const replyMsg: Message = {
       role: 'assistant',
       content: data.response,
       id: `msg-${Date.now()}-reply`,
-    })
+    }
+    if (data.kb_images && data.kb_images.length > 0) {
+      replyMsg.images = data.kb_images
+    }
+    messages.value.push(replyMsg)
     chatHistory.value.push(['user', text])
     chatHistory.value.push(['assistant', data.response])
 
@@ -201,6 +206,15 @@ async function submitFeedback(msg: Message, rating: number) {
     // ignore
   }
 }
+
+// 图片预览
+const previewImage = ref('')
+function openImagePreview(img: string) {
+  previewImage.value = `/faq-images/${img}`
+}
+function closeImagePreview() {
+  previewImage.value = ''
+}
 </script>
 
 <template>
@@ -226,6 +240,17 @@ async function submitFeedback(msg: Message, rating: number) {
           <div class="message-bubble">
             <p>{{ msg.content }}</p>
             <p v-if="msg.ticketId" class="ticket-id">工单号：{{ msg.ticketId }}</p>
+          </div>
+          <!-- FAQ 截图 -->
+          <div v-if="msg.images && msg.images.length" class="faq-images">
+            <img
+              v-for="(img, idx) in msg.images"
+              :key="idx"
+              :src="`/faq-images/${img}`"
+              :alt="'操作指引 ' + (idx + 1)"
+              class="faq-image"
+              @click="openImagePreview(img)"
+            />
           </div>
           <!-- 反馈按钮（仅助手消息） -->
           <div v-if="msg.role === 'assistant' && !msg.isTicket" class="feedback-buttons">
@@ -281,6 +306,14 @@ async function submitFeedback(msg: Message, rating: number) {
       <div class="stat">API 调用：<strong>{{ apiCalls }}</strong></div>
       <div class="stat">知识库命中率：<strong>{{ kbHitRate }}%</strong></div>
       <div class="stat">对话轮次：<strong>{{ chatHistory.length / 2 }}</strong></div>
+    </div>
+
+    <!-- 图片预览弹窗 -->
+    <div v-if="previewImage" class="image-preview-overlay" @click="closeImagePreview">
+      <div class="image-preview-content" @click.stop>
+        <img :src="previewImage" alt="预览" class="preview-img" />
+        <button class="preview-close" @click="closeImagePreview">✕</button>
+      </div>
     </div>
   </div>
 </template>
@@ -536,5 +569,77 @@ async function submitFeedback(msg: Message, rating: number) {
 
 .stats-bar strong {
   color: #333;
+}
+
+/* FAQ 截图 */
+.faq-images {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.faq-image {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  object-fit: cover;
+}
+
+.faq-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 图片预览弹窗 */
+.image-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.image-preview-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.preview-img {
+  max-width: 90vw;
+  max-height: 85vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.preview-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: background 0.2s;
+}
+
+.preview-close:hover {
+  background: #f5f5f5;
 }
 </style>

@@ -19,6 +19,7 @@ class AgentState(dict):
     kb_found: bool           # FAQ知识库是否找到答案
     kb_reference: str        # FAQ知识库参考内容（传给大模型）
     kb_category: str         # FAQ知识库匹配的分类
+    kb_images: list          # FAQ命中的截图文件名
     chunk_found: bool        # Chunk文档片段是否找到
     chunk_reference: str     # Chunk文档片段参考内容（传给大模型）
     history: list            # 对话历史 [(role, content), ...]

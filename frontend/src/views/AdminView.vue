@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-const API_BASE = 'http://192.168.10.209:8001'
-const API_KEY = 'neowow-dev-2026'
-const headers = { 'Content-Type': 'application/json', 'X-API-Key': API_KEY }
+const API_BASE = 'http://localhost:8001'
+
+// 从 localStorage 获取 Token
+const token = localStorage.getItem('token')
+const headers = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${token}`,
+}
 
 // 分类定义
 const CATEGORIES = [
@@ -71,9 +76,9 @@ async function loadData() {
   try {
     const faqResp = await fetch(`${API_BASE}/api/faqs`, { headers })
     const faqData = await faqResp.json()
-    faqItems.value = faqData.items.map((item: any, idx: number) => ({
+    faqItems.value = faqData.items.map((item: any) => ({
       ...item,
-      id: idx
+      id: item.index
     }))
 
     const pendingResp = await fetch(`${API_BASE}/api/pending`, { headers })

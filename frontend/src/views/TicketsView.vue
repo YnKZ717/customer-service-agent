@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-const API_BASE = 'http://192.168.10.209:8001'
-const API_KEY = 'neowow-dev-2026'
-const headers = { 'Content-Type': 'application/json', 'X-API-Key': API_KEY }
+const API_BASE = 'http://localhost:8001'
+
+const token = localStorage.getItem('token')
+const headers = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${token}`,
+}
 
 interface Ticket {
   ticket_id: string

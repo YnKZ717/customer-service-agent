@@ -48,7 +48,7 @@ from tools_vector import (
     reject_pending_faq,
     FAQ_DATA,
 )
-from ticket_utils import load_tickets, save_tickets, create_ticket
+from ticket_utils import load_tickets, save_tickets, create_ticket, extract_error_ids, is_copyright_error
 from i18n import set_language, get_language, t
 from ab_test import assign_user, get_strategy, record_experiment, get_experiment_results
 from auth import create_token, USERS, get_current_user
@@ -108,6 +108,7 @@ class ChatResponse(BaseModel):
     kb_category: str
     chunk_found: bool
     ticket_id: str = ""
+    kb_images: list = []  # FAQ 命中的截图
 
 
 class ErrorResponse(BaseModel):
@@ -210,9 +211,48 @@ def health_check():
 
 @app.post("/api/chat", response_model=ChatResponse, responses={500: {"model": ErrorResponse}})
 def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
-    """客服对话接口"""
+    """客服对话接口 — 自动检测 TaskID 错误并创建工单"""
     try:
         logger.info("用户提问: %s (历史: %d 轮)", request.user_input[:50], len(request.history or []) // 2)
+
+        # ── 自动检测：用户是否发送了包含 TaskID 的报错信息 ──
+        error_ids = extract_error_ids(request.user_input)
+        if error_ids and 'task_id' in error_ids:
+            is_copyright = is_copyright_error(request.user_input)
+            # 创建高优先级工单
+            ticket = create_ticket(
+                user_input=request.user_input,
+                history=request.history or [],
+                priority="high" if is_copyright else "normal",
+                tags=(["版权豁免"] if is_copyright else []) + ["自动创建"],
+            )
+            # 把提取的 ID 追加到工单
+            tickets = load_tickets()
+            for t in tickets:
+                if t['ticket_id'] == ticket['ticket_id']:
+                    t['task_id'] = error_ids.get('task_id', '')
+                    t['session_id'] = error_ids.get('session_id', '')
+                    t['node_id'] = error_ids.get('node_id', '')
+                    break
+            save_tickets(tickets)
+
+            if is_copyright:
+                response_text = f"检测到版权限制报错，已为您自动创建高优先级工单（工单号：{ticket['ticket_id']}）。客服将在后台为您申请内容豁免，请稍候。"
+            else:
+                response_text = f"已收到您的报错信息，已创建工单（工单号：{ticket['ticket_id']}），客服将尽快排查。TaskID：{error_ids.get('task_id', '')}"
+
+            logger.info("自动创建工单: %s (版权=%s)", ticket['ticket_id'], is_copyright)
+            record_stat("ticket")
+            return ChatResponse(
+                response=response_text,
+                intent="auto_ticket",
+                kb_found=False,
+                kb_category="",
+                chunk_found=False,
+                ticket_id=ticket['ticket_id'],
+            )
+
+        # ── 正常 Agent 对话流程 ──
 
         result = agent_app.invoke({
             "user_input": request.user_input,
@@ -221,6 +261,7 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
             "kb_found": False,
             "kb_reference": "",
             "kb_category": "",
+            "kb_images": [],
             "chunk_found": False,
             "chunk_reference": "",
             "history": request.history or [],
@@ -243,6 +284,7 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
             kb_category=result.get("kb_category", ""),
             chunk_found=result.get("chunk_found", False),
             ticket_id=result.get("ticket_id", ""),
+            kb_images=result.get("kb_images", []),
         )
     except HTTPException:
         raise
@@ -273,6 +315,7 @@ class FaqCreateRequest(BaseModel):
     question: str = Field(..., min_length=1, description="问题")
     answer: str = Field(..., min_length=1, description="答案")
     category: str = Field(..., description="分类")
+    images: list = Field(default=[], description="截图列表")
 
 
 @app.post("/api/faqs")
@@ -280,7 +323,7 @@ def add_faq(request: FaqCreateRequest, _ip: str = Depends(check_rate_limit)):
     """新增 FAQ"""
     try:
         from tools_vector import init_knowledge_base
-        FAQ_DATA.append((request.question, request.answer, request.category))
+        FAQ_DATA.append((request.question, request.answer, request.category, request.images))
         init_knowledge_base()
         logger.info("新增 FAQ: %s", request.question)
         return {"message": "已添加", "question": request.question}
@@ -296,7 +339,7 @@ def update_faq(index: int, request: FaqCreateRequest, _ip: str = Depends(check_r
         from tools_vector import init_knowledge_base
         if index < 0 or index >= len(FAQ_DATA):
             raise HTTPException(status_code=404, detail="FAQ 不存在")
-        FAQ_DATA[index] = (request.question, request.answer, request.category)
+        FAQ_DATA[index] = (request.question, request.answer, request.category, request.images)
         init_knowledge_base()
         logger.info("更新 FAQ: %s", request.question)
         return {"message": "已更新", "question": request.question}
@@ -328,13 +371,12 @@ def delete_faq(index: int, _ip: str = Depends(check_rate_limit)):
 @app.get("/api/faqs")
 def get_faqs(_ip: str = Depends(check_rate_limit)):
     """获取当前知识库所有 FAQ"""
-    return {
-        "items": [
-            {"index": i, "question": q, "answer": a, "category": c}
-            for i, (q, a, c) in enumerate(FAQ_DATA)
-        ],
-        "total": len(FAQ_DATA),
-    }
+    items = []
+    for i, item in enumerate(FAQ_DATA):
+        q, a, c = item[0], item[1], item[2]
+        images = item[3] if len(item) > 3 else []
+        items.append({"index": i, "question": q, "answer": a, "category": c, "images": images})
+    return {"items": items, "total": len(FAQ_DATA)}
 
 
 @app.post("/api/approve/{index}")

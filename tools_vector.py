@@ -51,8 +51,8 @@ def load_approved_faqs():
     try:
         with open(APPROVED_FAQ_FILE, 'r', encoding='utf-8') as f:
             approved = json.load(f)
-            # 转成 FAQ_DATA 格式 (问题, 答案, 类别)
-            return [(a['question'], a['answer'], a.get('category', 'approved')) for a in approved]
+            # 转成 FAQ_DATA 格式 (问题, 答案, 类别, 图片列表)
+            return [(a['question'], a['answer'], a.get('category', 'approved'), a.get('images', [])) for a in approved]
     except FileNotFoundError:
         return []
 
@@ -67,21 +67,32 @@ def init_knowledge_base():
     if existing['ids']:
         collection.delete(ids=existing['ids'])
 
-    for i, (question, answer, category) in enumerate(FAQ_DATA):
+    for i, item in enumerate(FAQ_DATA):
+        # 支持3元素和4元素元组（向后兼容）
+        if len(item) == 4:
+            question, answer, category, images = item
+        else:
+            question, answer, category = item
+            images = []
+
         if question and answer and category:
             vector = model.encode(question).tolist()
+            metadata = {"question": question, "category": category}
+            if images:
+                metadata["images"] = ",".join(images)  # ChromaDB 不支持 list，用逗号分隔
             collection.add(
                 ids=[f"faq_{i}"],
                 embeddings=[vector],
                 documents=[answer],
-                metadatas=[{"question": question, "category": category}]
+                metadatas=[metadata]
             )
     print(f"知识库初始化完成，共 {len([f for f in FAQ_DATA if f[0]])} 条FAQ")
 
 
 # ── 关键词索引（与向量搜索互补）──────────────────────────
 KEYWORD_INDEX = {}
-for i, (question, answer, category) in enumerate(FAQ_DATA):
+for i, item in enumerate(FAQ_DATA):
+    question = item[0]
     for char in question:
         if char not in KEYWORD_INDEX:
             KEYWORD_INDEX[char] = []
@@ -103,7 +114,8 @@ def keyword_search(query: str, top_k: int = 3) -> list[int]:
 
     # 统计每个FAQ命中的bigram数量
     scores = {}
-    for faq_idx, (question, _, _) in enumerate(FAQ_DATA):
+    for faq_idx, item in enumerate(FAQ_DATA):
+        question = item[0]
         if not question:
             continue
         hit_count = 0
@@ -118,7 +130,7 @@ def keyword_search(query: str, top_k: int = 3) -> list[int]:
     return [idx for idx, score in sorted_indices[:top_k] if score >= 1]
 
 
-def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.65, return_reference: bool = False) -> tuple[str, str, str]:
+def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.65, return_reference: bool = False) -> tuple:
     """混合搜索：关键词 + 向量双路
 
     策略：
@@ -126,6 +138,8 @@ def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.6
     2. 向量搜索计算相似度
     3. 关键词命中的候选，向量相似度阈值降到0.6
     4. 向量命中的候选，阈值保持0.8
+
+    返回: (question, answer, reference_text, images)
     """
     query_vector = model.encode(query)
 
@@ -146,9 +160,11 @@ def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.6
     # 先加关键词命中的（标记来源）
     for idx in keyword_indices:
         if idx < len(FAQ_DATA):
-            q, a, c = FAQ_DATA[idx]
+            item = FAQ_DATA[idx]
+            q, a, c = item[0], item[1], item[2]
+            images = item[3] if len(item) > 3 else []
             if q and q not in seen_questions:
-                merged_results.append({"question": q, "answer": a, "source": "keyword"})
+                merged_results.append({"question": q, "answer": a, "source": "keyword", "images": images})
                 seen_questions.add(q)
 
     # 再加向量命中的
@@ -156,12 +172,18 @@ def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.6
         for i in range(min(5, len(vector_results['documents'][0]))):
             q = vector_results['metadatas'][0][i]['question']
             a = vector_results['documents'][0][i]
+            # 从 FAQ_DATA 中找对应的 images
+            images = []
+            for item in FAQ_DATA:
+                if item[0] == q:
+                    images = item[3] if len(item) > 3 else []
+                    break
             if q and q not in seen_questions:
-                merged_results.append({"question": q, "answer": a, "source": "vector"})
+                merged_results.append({"question": q, "answer": a, "source": "vector", "images": images})
                 seen_questions.add(q)
 
     if not merged_results:
-        return None, None, ""
+        return None, None, "", []
 
     # ── 计算向量相似度 ────────────────────────────────────
     # 重新向量化每个候选问题，计算与 query 的相似度
@@ -186,9 +208,9 @@ def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.6
     reference_text = "\n\n".join(reference_parts)
 
     if best_match:
-        return best_match['question'], best_match['answer'], reference_text if return_reference else ""
+        return best_match['question'], best_match['answer'], reference_text if return_reference else "", best_match.get('images', [])
 
-    return None, None, reference_text if return_reference else ""
+    return None, None, reference_text if return_reference else "", []
 
 
 # ─ 沉淀机制：自动 FAQ 系统 ──
