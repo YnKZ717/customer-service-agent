@@ -51,6 +51,8 @@ from tools_vector import (
 from ticket_utils import load_tickets, save_tickets, create_ticket
 from i18n import set_language, get_language, t
 from ab_test import assign_user, get_strategy, record_experiment, get_experiment_results
+from auth import create_token, USERS, get_current_user
+from auth import create_token, USERS, hash_password
 
 # ── FastAPI 应用 ──
 app = FastAPI(title="Neowow 智能客服 API")
@@ -112,22 +114,32 @@ class ErrorResponse(BaseModel):
     error: str
 
 
-# ─ API 鉴权 ──
+# ── API 鉴权 ──
 API_KEY = os.getenv("API_KEY", "neowow-dev-2026")
 
-def verify_api_key(x_api_key: str = Header(None)):
-    """验证 API Key"""
-    if x_api_key != API_KEY:
-        logger.warning("API Key 验证失败: %s", x_api_key)
-        raise HTTPException(status_code=401, detail="无效的 API Key")
-    return x_api_key
+
+def verify_token(authorization: str = Header(None)):
+    """验证 JWT Token"""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="缺少认证信息")
+
+    # 支持 "Bearer xxx" 格式
+    token = authorization
+    if authorization.startswith("Bearer "):
+        token = authorization[7:]
+
+    try:
+        from auth import decode_token
+        return decode_token(token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"认证失败: {str(e)}")
 
 
 # ── 限流 ──
 RATE_LIMIT = 200  # 每分钟最多30次请求
 rate_limit_store = defaultdict(list)
 
-def check_rate_limit(request: Request, _key: str = Depends(verify_api_key)):
+def check_rate_limit(request: Request, _user: dict = Depends(verify_token)):
     """检查请求频率限制"""
     ip = request.client.host if request.client else "unknown"
     now = time.time()
@@ -499,6 +511,48 @@ class TicketCreateRequest(BaseModel):
 
 class TicketReplyRequest(BaseModel):
     reply: str = Field(..., min_length=1, description="客服回复内容")
+
+
+# ── 认证 API ─
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., description="用户名")
+    password: str = Field(..., description="密码")
+
+
+class LoginResponse(BaseModel):
+    token: str
+    user: dict
+
+
+@app.post("/api/auth/login")
+def login(request: LoginRequest):
+    """用户登录"""
+    username = request.username
+    password = request.password
+
+    # 验证用户
+    user = USERS.get(username)
+    if not user or user["password"] != password:
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+    # 生成 Token
+    token = create_token(username, user["role"], user["name"])
+
+    return LoginResponse(
+        token=token,
+        user={
+            "username": username,
+            "role": user["role"],
+            "name": user["name"],
+        }
+    )
+
+
+@app.get("/api/auth/me")
+def get_me(user: dict = Depends(get_current_user)):
+    """获取当前用户信息"""
+    return user
 
 
 @app.post("/api/tickets")

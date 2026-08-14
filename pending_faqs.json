@@ -107,5 +107,228 @@
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
+  },
+  {
+    "question": "你礼貌吗",
+    "answer": "服务暂时不可用，请稍后再试。",
+    "original_answer": "服务暂时不可用，请稍后再试。（错误：Connection error.）",
+    "count": 1,
+    "first_asked": "2026-08-13 19:06",
+    "last_asked": "2026-08-13 19:06",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "你还好吗",
+    "answer": "服务暂时不可用，请稍后再试。",
+    "original_answer": "服务暂时不可用，请稍后再试。（错误：Connection error.）",
+    "count": 1,
+    "first_asked": "2026-08-13 19:07",
+    "last_asked": "2026-08-13 19:07",
+    "history": [
+      [
+        "user",
+        "你礼貌吗"
+      ],
+      [
+        "assistant",
+        "服务暂时不可用，请稍后再试。（错误：Connection error.）"
+      ],
+      [
+        "user",
+        "CodingPlan 是什么"
+      ],
+      [
+        "assistant",
+        "CodingPlan 是智能体套餐，提供模型调用额度。购买后可在账户中心查看 Credits 使用情况，支持现金或积分购买。"
+      ]
+    ],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "我需要退款",
+    "answer": "服务暂时不可用，请稍后再试。",
+    "original_answer": "服务暂时不可用，请稍后再试。（错误：Connection error.）",
+    "count": 1,
+    "first_asked": "2026-08-13 19:07",
+    "last_asked": "2026-08-13 19:07",
+    "history": [
+      [
+        "user",
+        "CodingPlan 是什么"
+      ],
+      [
+        "assistant",
+        "CodingPlan 是智能体套餐，提供模型调用额度。购买后可在账户中心查看 Credits 使用情况，支持现金或积分购买。"
+      ],
+      [
+        "user",
+        "你还好吗"
+      ],
+      [
+        "assistant",
+        "服务暂时不可用，请稍后再试。（错误：Connection error.）"
+      ]
+    ],
+    "status": "rejected",
+    "sensitive": true,
+    "auto_approved": false,
+    "priority": "high",
+    "reason": "包含敏感词，建议人工审核"
+  },
+  {
+    "question": "帮我提取下面两个网站的sd2.0和2.5的输入输出参数信息，您好老师，sd2.5提示词参考：https://docs.volcengine.com/docs/82379/2607689?lang=zh sd2.0提示词参考：https://docs.volcengine.com/docs/82379/2222480?lang=zh",
+    "answer": "Neowow Studio不提供火山引擎SD模型参数提取服务，请直接访问您提供的官方文档或联系火山引擎技术支持。",
+    "original_answer": "您好，感谢您的咨询！\n\n关于您提到的“sd2.0和2.5的输入输出参数信息”，我需要向您说明：\n\n1. **Neowow Studio** 是一个智能创意内容生产与协作平台，我们不提供针对火山引擎（Volcengine）文档中SD（Stable Diffusion）模型参数的提取服务。\n\n2. 您提供的链接指向的是火山引擎的官方文档，这属于第三方平台的技术资料。建议您直接访问上述链接查看相关参数说明，或联系火山引擎的官方技术支持获取帮助。\n\n3. 如果您在使用 **Neowow Studio** 平台时遇到任何关于视频生成、图像生成或模型调用的问题，我非常乐意为您解答。\n\n请问还有其他我可以帮助您的吗？",
+    "count": 2,
+    "first_asked": "2026-08-13 19:11",
+    "last_asked": "2026-08-14 10:18",
+    "history": [],
+    "status": "approved",
+    "sensitive": false,
+    "auto_approved": true,
+    "priority": "normal",
+    "approved_at": "2026-08-14 10:18"
+  },
+  {
+    "question": "我不会用超创站",
+    "answer": "服务暂时不可用，请稍后再试。",
+    "original_answer": "服务暂时不可用，请稍后再试。（错误：Connection error.）",
+    "count": 1,
+    "first_asked": "2026-08-14 09:55",
+    "last_asked": "2026-08-14 09:55",
+    "history": [
+      [
+        "user",
+        "我要投诉"
+      ],
+      [
+        "assistant",
+        "请描述具体问题，我们会尽快处理；如需人工，请输入\"转人工\"。"
+      ],
+      [
+        "user",
+        "怎么充值积分"
+      ],
+      [
+        "assistant",
+        "点击首页右上角\"加号\"，选择金额并扫码支付，积分自动到账。"
+      ]
+    ],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "我不会用工具集",
+    "answer": "请说明具体是哪个工具集或功能，并描述您想实现的目标，我会为您提供操作指引。",
+    "original_answer": "您好！请问您具体指的是哪个工具集呢？是 Neowow 平台上的某个功能（比如智能体、技能市场等），还是某个特定工具？您可以详细描述一下您遇到的问题，我会尽力帮您解答。如果是操作步骤不清楚，也可以告诉我您想实现的目标，我为您提供指引。😊",
+    "count": 1,
+    "first_asked": "2026-08-14 10:17",
+    "last_asked": "2026-08-14 10:17",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "教我怎么用工具集",
+    "answer": "工具集指技能市场、应用市场或智能体配置中的工具选择，请说明所在界面及目标，以便提供具体操作指引。",
+    "original_answer": "您好！感谢您进一步说明。为了给您更准确的指引，我需要先确认一下您说的“工具集”具体是指哪个功能。在 Neowow 平台中，比较常见的相关功能有：\n\n1. **技能市场**：您可以浏览、订阅、收藏各种智能体技能。订阅后，技能会自动同步到您的智能体中，方便调用。\n2. **应用市场**：您可以浏览、购买、预览应用，点击“在线预览”即可无需安装直接体验。\n3. **智能体配置**：在创建或编辑智能体时，可能包含工具/技能的选择与调用设置。\n\n如果您能告诉我：\n- 您是在哪个界面看到“工具集”的（比如网页端、桌面端）？\n- 您想用它实现什么目标（比如创作内容、搭建智能体等）？\n\n我可以针对性地给您分步骤的操作指引。如果您不确定，也可以描述一下您看到的具体页面内容，我帮您判断。😊",
+    "count": 1,
+    "first_asked": "2026-08-14 10:17",
+    "last_asked": "2026-08-14 10:17",
+    "history": [
+      [
+        "user",
+        "我不会用工具集"
+      ],
+      [
+        "assistant",
+        "您好！请问您具体指的是哪个工具集呢？是 Neowow 平台上的某个功能（比如智能体、技能市场等），还是某个特定工具？您可以详细描述一下您遇到的问题，我会尽力帮您解答。如果是操作步骤不清楚，也可以告诉我您想实现的目标，我为您提供指引。😊"
+      ]
+    ],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "额怎么用工具集啊",
+    "answer": "请告知您看到“工具集”的具体页面（网页端、客户端或智能体配置界面）及使用目的，以便提供准确操作指引。",
+    "original_answer": "您好！看起来您对“工具集”这个功能比较困惑，非常理解。为了给您最准确的指引，我需要您帮忙确认一下具体位置。\n\n您方便告诉我**是在哪个页面**看到“工具集”这个入口的吗？比如：\n\n- 是在**网页端**的某个菜单栏？\n- 还是在**桌面客户端**的侧边栏？\n- 或者是在**创建/编辑智能体**的配置界面里？\n\n另外，您**想用它做什么**呢？比如是想调用某个功能，还是想搭建一个智能体？\n\n您提供的信息越具体，我就能越准确地告诉您操作步骤。如果实在不确定，也可以截个图描述一下您看到的界面，我帮您判断。😊",
+    "count": 1,
+    "first_asked": "2026-08-14 10:17",
+    "last_asked": "2026-08-14 10:17",
+    "history": [
+      [
+        "user",
+        "我不会用工具集"
+      ],
+      [
+        "assistant",
+        "您好！请问您具体指的是哪个工具集呢？是 Neowow 平台上的某个功能（比如智能体、技能市场等），还是某个特定工具？您可以详细描述一下您遇到的问题，我会尽力帮您解答。如果是操作步骤不清楚，也可以告诉我您想实现的目标，我为您提供指引。😊"
+      ],
+      [
+        "user",
+        "教我怎么用工具集"
+      ],
+      [
+        "assistant",
+        "您好！感谢您进一步说明。为了给您更准确的指引，我需要先确认一下您说的“工具集”具体是指哪个功能。在 Neowow 平台中，比较常见的相关功能有：\n\n1. **技能市场**：您可以浏览、订阅、收藏各种智能体技能。订阅后，技能会自动同步到您的智能体中，方便调用。\n2. **应用市场**：您可以浏览、购买、预览应用，点击“在线预览”即可无需安装直接体验。\n3. **智能体配置**：在创建或编辑智能体时，可能包含工具/技能的选择与调用设置。\n\n如果您能告诉我：\n- 您是在哪个界面看到“工具集”的（比如网页端、桌面端）？\n- 您想用它实现什么目标（比如创作内容、搭建智能体等）？\n\n我可以针对性地给您分步骤的操作指引。如果您不确定，也可以描述一下您看到的具体页面内容，我帮您判断。😊"
+      ]
+    ],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "我不会用超创站",
+    "answer": "请描述具体使用场景（如进入、创建或编辑内容），我会提供分步指引。",
+    "original_answer": "超创站是 Neowow 平台的核心功能之一。为了更准确地帮你，能否具体说明你遇到了什么问题？比如：\n\n1. 不知道怎么进入超创站？\n2. 进入后不知道如何创建/编辑内容？\n3. 某个具体功能不会操作？\n\n你也可以直接描述你的使用场景，我来给你逐步指引。",
+    "count": 2,
+    "first_asked": "2026-08-14 10:52",
+    "last_asked": "2026-08-14 11:10",
+    "history": [],
+    "status": "approved",
+    "sensitive": false,
+    "auto_approved": true,
+    "priority": "normal",
+    "approved_at": "2026-08-14 11:10"
+  },
+  {
+    "question": "工具集里的数字人是什么",
+    "answer": "数字人是工具集中生成虚拟人物形象及内容的功能，具体能力与用法详见平台工具集页面或官方文档。",
+    "original_answer": "数字人是工具集中的一项功能，用于生成虚拟人物形象及内容。具体支持的能力和使用方式，建议你在平台工具集页面查看详细说明，或查阅官方文档获取准确信息。",
+    "count": 1,
+    "first_asked": "2026-08-14 11:13",
+    "last_asked": "2026-08-14 11:13",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "mj系列的模型可以给情绪版和风格版代码吗",
+    "answer": "知识库暂无MJ系列模型代码格式说明，建议查看生成界面参数或官方文档。",
+    "original_answer": "目前知识库中没有关于 MJ 系列模型具体代码格式的详细说明。建议您在生成界面查看模型参数或提示词模板，或查阅官方文档获取更准确的信息。",
+    "count": 1,
+    "first_asked": "2026-08-14 12:36",
+    "last_asked": "2026-08-14 12:36",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
   }
 ]

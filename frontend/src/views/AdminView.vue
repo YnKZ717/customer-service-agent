@@ -56,7 +56,10 @@ const filteredFaqs = computed(() => {
 
 // 各分类数量
 const categoryCounts = computed(() => {
-  const counts: Record<string, number> = { all: faqItems.value.length }
+  const counts: Record<string, number> = {
+    all: faqItems.value.length,
+    pending: pendingItems.value.length,
+  }
   for (const f of faqItems.value) {
     counts[f.category] = (counts[f.category] || 0) + 1
   }

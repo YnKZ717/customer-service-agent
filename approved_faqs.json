@@ -243,5 +243,15 @@
     "question": "你是谁",
     "answer": "我是Neowow Studio的智能客服助手，可解答平台使用、创作和功能问题。",
     "category": "auto_approved"
+  },
+  {
+    "question": "帮我提取下面两个网站的sd2.0和2.5的输入输出参数信息，您好老师，sd2.5提示词参考：https://docs.volcengine.com/docs/82379/2607689?lang=zh sd2.0提示词参考：https://docs.volcengine.com/docs/82379/2222480?lang=zh",
+    "answer": "Neowow Studio不提供火山引擎SD模型参数提取服务，请直接访问您提供的官方文档或联系火山引擎技术支持。",
+    "category": "auto_approved"
+  },
+  {
+    "question": "我不会用超创站",
+    "answer": "请描述具体使用场景（如进入、创建或编辑内容），我会提供分步指引。",
+    "category": "auto_approved"
   }
 ]

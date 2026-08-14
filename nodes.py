@@ -67,11 +67,27 @@ INTENT_KEYWORDS = {
 
 # ── 三层 system prompt 组装 ──
 SYSTEM_PROMPT_STABLE = """你是 Neowow Studio 的智能客服助手。Neowow 是一站式智能创意内容生产与协作平台。
-回答规则：
-1. 礼貌、简洁、准确
-2. 不确定的问题诚实告知，建议转人工
-3. 不编造平台没有的功能
-4. 涉及充值、账号安全等敏感操作，提醒用户通过官方渠道"""
+
+## 回答风格
+- 简洁、专业、直接
+- 不要过度热情，不要加"哈""呢""啦"等语气词
+- 不要加 emoji，除非用户先用了
+
+## 回答规则
+1. 优先用知识库内容回答，确保准确
+2. 知识库没有的，用你的理解回答
+3. 完全不知道的问题，诚实说"这个我暂时无法确认，建议查阅官方文档或联系人工客服"
+4. 涉及充值、账号安全等敏感操作，提醒用户通过官方渠道
+
+## 能力边界
+- 能回答：Neowow 平台功能、套餐、操作指南、常见问题
+- 不能回答：第三方平台（如火山引擎/抖音）的具体技术问题
+- 不要说"这不归我管"，给出替代方案
+
+## 禁止行为
+- 不要说"我们不提供XX服务"
+- 不要说"建议您联系XX官方"
+- 不要编造平台没有的功能"""
 
 SYSTEM_PROMPT_MEMORY_TEMPLATE = """对话历史（最近{count}轮）：
 {history}
@@ -192,19 +208,25 @@ def troubleshoot(state: dict) -> dict:
     history = state.get("history", [])
 
     # 构建故障排查的 system prompt
-    troubleshoot_prompt = """你是 Neowow 平台的技术支持专家。用户遇到了问题，你需要通过多轮对话引导他们解决。
+    troubleshoot_prompt = """你是 Neowow 平台的技术支持。用户遇到了问题，通过多轮对话引导他们排查。
 
-排查步骤：
-1. 先确认问题类型（视频生成/图片生成/音频处理/账户问题/其他）
+## 排查风格
+- 简洁、专业、清晰
+- 不要过度热情，不要用"哈""呢""啦"等语气词
+- 不要加 emoji，除非用户先用了
+- 每次只问 1-2 个问题
+- 用编号列表给排查步骤
+
+## 排查流程
+1. 先确认问题类型（视频/图片/音频/账户/其他）
 2. 了解具体情况（错误提示、任务 ID、操作步骤）
 3. 给出针对性的排查建议（最多 3 条）
-4. 如果问题仍未解决，建议转人工客服
+4. 如果问题仍未解决，主动建议转人工客服
 
-回答规则：
-- 每次只问 1-2 个问题，不要一次问太多
-- 用编号列表给出排查步骤
-- 语气友好、专业
-- 如果用户已经提供了足够信息，直接给出解决方案"""
+## 注意
+- 不要说"请提供详细信息"
+- 不要推卸责任，给出实际建议
+"""
 
     # 构建消息
     messages = [{"role": "system", "content": troubleshoot_prompt}]
@@ -215,18 +237,29 @@ def troubleshoot(state: dict) -> dict:
 
     messages.append({"role": "user", "content": user_input})
 
-    try:
-        response = client.chat.completions.create(
-            model=LLM_CONFIG["model_name"],
-            messages=messages,
-            max_tokens=600,
-            temperature=0.5,  # 更稳定的输出
-        )
-        reply = response.choices[0].message.content
-    except Exception as e:
-        # 主模型失败，尝试备用模型
-        print(f"[模型降级] 主模型失败：{str(e)[:80]}")
-        reply = None
+    reply = None
+
+    # 主模型调用（失败自动重试 1 次）
+    for attempt in range(2):
+        try:
+            if attempt == 1:
+                print("[自动重试] 主模型第 2 次尝试...")
+            response = client.chat.completions.create(
+                model=LLM_CONFIG["model_name"],
+                messages=messages,
+                max_tokens=600,
+                temperature=0.5,
+            )
+            reply = response.choices[0].message.content
+            break
+        except Exception as e:
+            print(f"[模型降级] 主模型第{attempt+1}次失败：{str(e)[:60]}")
+            if attempt == 0:
+                continue
+
+    # 主模型彻底失败，尝试备用模型
+    if reply is None:
+        print("[模型降级] 主模型重试失败，切换备用模型...")
         for i, fb_client in enumerate(fallback_clients):
             fm = FALLBACK_MODELS[i]
             try:
@@ -238,14 +271,14 @@ def troubleshoot(state: dict) -> dict:
                     temperature=0.5,
                 )
                 reply = response.choices[0].message.content
-                print(f"[模型降级] 备用模型成功")
+                print("[模型降级] 备用模型成功")
                 break
             except Exception as e2:
                 print(f"[模型降级] 备用模型 {i+1} 也失败：{str(e2)[:50]}")
                 continue
 
-        if reply is None:
-            reply = "抱歉，系统暂时繁忙，请稍后再试。如需紧急帮助，请输入'转人工'。"
+    if reply is None:
+        reply = "抱歉，系统暂时繁忙，请稍后再试。如需紧急帮助，请输入'转人工'。"
 
     return {
         "response": reply,
@@ -276,18 +309,29 @@ def general_reply(state: dict) -> dict:
         messages.append({"role": "user" if role == "user" else "assistant", "content": content})
     messages.append({"role": "user", "content": user_input})
 
-    try:
-        response = client.chat.completions.create(
-            model=LLM_CONFIG["model_name"],
-            messages=messages,
-            max_tokens=500,
-            temperature=0.7,
-        )
-        reply = response.choices[0].message.content
-    except Exception as e:
-        # 主模型失败，尝试备用模型
-        print(f"[模型降级] 主模型失败：{str(e)[:80]}")
-        reply = None
+    reply = None
+
+    # 主模型调用（失败自动重试 1 次）
+    for attempt in range(2):
+        try:
+            if attempt == 1:
+                print("[自动重试] 主模型第 2 次尝试...")
+            response = client.chat.completions.create(
+                model=LLM_CONFIG["model_name"],
+                messages=messages,
+                max_tokens=500,
+                temperature=0.7,
+            )
+            reply = response.choices[0].message.content
+            break
+        except Exception as e:
+            print(f"[模型降级] 主模型第{attempt+1}次失败：{str(e)[:60]}")
+            if attempt == 0:
+                continue  # 重试一次
+
+    # 主模型彻底失败，尝试备用模型
+    if reply is None:
+        print("[模型降级] 主模型重试失败，切换备用模型...")
         for i, fb_client in enumerate(fallback_clients):
             fm = FALLBACK_MODELS[i]
             try:
@@ -299,17 +343,17 @@ def general_reply(state: dict) -> dict:
                     temperature=0.7,
                 )
                 reply = response.choices[0].message.content
-                print(f"[模型降级] 备用模型成功")
+                print("[模型降级] 备用模型成功")
                 break
             except Exception as e2:
                 print(f"[模型降级] 备用模型 {i+1} 也失败：{str(e2)[:50]}")
                 continue
 
-        if reply is None:
-            reply = t("service_unavailable") + f"（错误：{str(e)[:50]}）"
+    if reply is None:
+        reply = t("service_unavailable")
 
-    # 沉淀：新问题自动记录
-    if reply and not reply.startswith("系统暂时繁忙") and not reply.startswith("Service temporarily"):
+    # 沉淀：新问题自动记录（只沉淀有实质内容的回答）
+    if reply and not reply.startswith("系统暂时繁忙") and not reply.startswith("Service temporarily") and not reply.startswith("抱歉"):
         save_pending_faq(user_input, reply, history)
 
     return {"response": reply, "intent": "general"}

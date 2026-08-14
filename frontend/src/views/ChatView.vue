@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 
-const API_BASE = 'http://192.168.10.209:8001'
-const API_KEY = 'neowow-dev-2026'
+const API_BASE = 'http://localhost:8001'
 
-const headers = { 'Content-Type': 'application/json', 'X-API-Key': API_KEY }
+// 从 localStorage 获取 Token
+const token = localStorage.getItem('token')
+const headers = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${token}`,
+}
 
 interface Message {
   role: 'user' | 'assistant'
