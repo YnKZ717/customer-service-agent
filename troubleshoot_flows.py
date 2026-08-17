@@ -257,7 +257,7 @@ TROUBLESHOOT_FLOWS = {
 
     "account_issue": {
         "name": "账号/积分问题",
-        "triggers": ["积分没了", "扣多了", "账号问题", "积分少了", "会员到期", "充值没到账"],
+        "triggers": ["积分没了", "扣多了", "账号问题", "积分少了", "积分突然少了", "会员到期", "充值没到账"],
         "kb_categories": ["billing", "account"],
         "max_steps": 2,
         "steps": [

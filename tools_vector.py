@@ -130,7 +130,7 @@ def keyword_search(query: str, top_k: int = 3) -> list[int]:
     return [idx for idx, score in sorted_indices[:top_k] if score >= 1]
 
 
-def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.65, return_reference: bool = False) -> tuple:
+def search_knowledge_base(query: str, intent: str = None, threshold: float = 0.55, return_reference: bool = False) -> tuple:
     """混合搜索：关键词 + 向量双路
 
     策略：
@@ -313,7 +313,7 @@ def save_pending_faq(question: str, llm_answer: str, history: list = None):
         pass
 
     # 1. 找相似问题（向量去重）
-    similar_idx = find_similar_pending(question, pending, threshold=0.85)
+    similar_idx = find_similar_pending(question, pending, threshold=0.8)
 
     if similar_idx >= 0:
         # 相似问题已存在，计数 +1，更新答案
