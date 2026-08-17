@@ -218,8 +218,17 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
         logger.info("用户提问: %s (历史: %d 轮)", request.user_input[:50], len(request.history or []) // 2)
 
         # ── 自动检测：用户是否发送了包含 TaskID 的报错信息 ──
+        # 优化：如果用户在排查流程中提供 TaskID，优先进入排查调用工具
         error_ids = extract_error_ids(request.user_input)
-        if error_ids and 'task_id' in error_ids:
+        is_in_troubleshoot = False
+        if request.history:
+            for i in range(len(request.history) - 1, -1, -1):
+                role, content_h = request.history[i]
+                if role == "assistant" and "故障排查中" in content_h:
+                    is_in_troubleshoot = True
+                    break
+
+        if error_ids and 'task_id' in error_ids and not is_in_troubleshoot:
             is_copyright = is_copyright_error(request.user_input)
             # 创建高优先级工单
             ticket = create_ticket(
@@ -644,19 +653,61 @@ def create_ticket_api(request: TicketCreateRequest, _ip: str = Depends(check_rat
 
 
 @app.get("/api/tickets")
-def get_tickets(status: Optional[str] = None, _ip: str = Depends(check_rate_limit)):
-    """获取工单列表（可按状态筛选）"""
+def get_tickets(
+    status: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 10,
+    search: Optional[str] = None,
+    _ip: str = Depends(check_rate_limit)
+):
+    """获取工单列表（支持分页、状态筛选、搜索）"""
     try:
         tickets = load_tickets()
+
+        # 状态筛选
         if status:
             tickets = [t for t in tickets if t['status'] == status]
+
+        # 搜索（问题内容或工单号）
+        if search:
+            search_lower = search.lower()
+            tickets = [t for t in tickets if
+                       search_lower in t.get('question', '').lower() or
+                       search_lower in t.get('ticket_id', '').lower()]
+
         # 倒序排列，最新的在前
         tickets.reverse()
-        logger.info("返回工单列表：%d 条 (筛选：%s)", len(tickets), status or "全部")
-        return {"items": tickets, "total": len(tickets)}
+
+        # 分页
+        total = len(tickets)
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_tickets = tickets[start:end]
+
+        logger.info("返回工单列表：%d 条 (筛选：%s, 搜索：%s, 页码：%d/%d)",
+                   len(page_tickets), status or "全部", search or "无", page, (total + page_size - 1) // page_size)
+        return {"items": page_tickets, "total": total, "page": page, "page_size": page_size}
     except Exception as e:
         logger.exception("获取工单列表失败：%s", str(e))
         raise HTTPException(status_code=500, detail="获取工单失败")
+
+
+@app.delete("/api/tickets/{ticket_id}")
+def delete_ticket(ticket_id: str, _ip: str = Depends(check_rate_limit)):
+    """删除工单"""
+    try:
+        tickets = load_tickets()
+        new_tickets = [t for t in tickets if t['ticket_id'] != ticket_id]
+        if len(new_tickets) == len(tickets):
+            raise HTTPException(status_code=404, detail="工单不存在")
+        save_tickets(new_tickets)
+        logger.info("删除工单：%s", ticket_id)
+        return {"message": "已删除", "ticket_id": ticket_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("删除工单失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="删除工单失败")
 
 
 @app.get("/api/tickets/{ticket_id}")

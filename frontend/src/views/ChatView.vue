@@ -20,31 +20,14 @@ interface Message {
   images?: string[]  // FAQ 命中的截图
   isTroubleshooting?: boolean  // 是否在排查流程中
   troubleshootStep?: number    // 当前排查步骤
+  timestamp?: Date  // 消息时间
 }
 
-// ── localStorage 持久化 ──
-const STORAGE_KEY = 'neowow_chat_history'
-
+// ── 每次打开都初始化新对话 ──
 function loadChatHistory(): Message[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      return JSON.parse(saved)
-    }
-  } catch {
-    // ignore
-  }
   return [
-    { role: 'assistant', content: '你好！我是 Neowow Studio 的智能客服助手。你可以问我关于账号、充值、CodingPlan 套餐、智能体使用等问题。' }
+    { role: 'assistant', content: '你好！我是 Neowow Studio 的智能客服助手。你可以问我关于账号、充值、会员套餐、视频生成、图片生成等问题，我会尽力帮你解决。' }
   ]
-}
-
-function saveChatHistory(msgs: Message[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs.slice(-50)))
-  } catch {
-    // ignore
-  }
 }
 
 const messages = ref<Message[]>(loadChatHistory())
@@ -59,11 +42,7 @@ const kbHitRate = ref(0)
 
 const quickQuestions = ['怎么充值积分', 'CodingPlan 是什么', '怎么使用智能体', '我要投诉']
 
-// 监听消息变化，自动保存
 import { watch } from 'vue'
-watch(messages, (newMsgs) => {
-  saveChatHistory(newMsgs)
-}, { deep: true })
 
 // 监听输入，自动滚动
 watch(userInput, () => {
@@ -82,7 +61,7 @@ watch(
 async function sendMessage(text: string) {
   if (!text.trim() || loading.value) return
 
-  const userMsg: Message = { role: 'user', content: text, id: `msg-${Date.now()}` }
+  const userMsg: Message = { role: 'user', content: text, id: `msg-${Date.now()}`, timestamp: new Date() }
   messages.value.push(userMsg)
   userInput.value = ''
   loading.value = true
@@ -98,6 +77,7 @@ async function sendMessage(text: string) {
       role: 'assistant',
       content: data.response,
       id: `msg-${Date.now()}-reply`,
+      timestamp: new Date(),
     }
     if (data.kb_images && data.kb_images.length > 0) {
       replyMsg.images = data.kb_images
@@ -125,6 +105,13 @@ async function sendMessage(text: string) {
 
 function handleQuickQuestion(q: string) {
   sendMessage(q)
+}
+
+function formatTime(date: Date): string {
+  const d = new Date(date)
+  const hours = d.getHours().toString().padStart(2, '0')
+  const minutes = d.getMinutes().toString().padStart(2, '0')
+  return `${hours}:${minutes}`
 }
 
 async function transferToHuman() {
@@ -250,6 +237,7 @@ function closeImagePreview() {
           <div class="message-bubble">
             <p>{{ msg.content }}</p>
             <p v-if="msg.ticketId" class="ticket-id">工单号：{{ msg.ticketId }}</p>
+            <p v-if="msg.timestamp" class="message-time">{{ formatTime(msg.timestamp) }}</p>
           </div>
           <!-- 排查状态指示器 -->
           <div v-if="msg.isTroubleshooting" class="troubleshoot-badge">
@@ -347,20 +335,25 @@ function closeImagePreview() {
 }
 
 .chat-page {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
+  height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
 }
 
 .page-title {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 4px;
+  flex-shrink: 0;
 }
 
 .page-subtitle {
   color: #888;
   font-size: 14px;
   margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .quick-buttons {
@@ -370,6 +363,7 @@ function closeImagePreview() {
   flex-wrap: wrap;
   max-width: 100%;
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .quick-btn {
@@ -409,8 +403,8 @@ function closeImagePreview() {
   background: #fff;
   border-radius: 12px;
   padding: 20px;
-  min-height: 400px;
-  max-height: 500px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -468,6 +462,17 @@ function closeImagePreview() {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed #ffcc80;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #999;
+  margin-top: 6px;
+  text-align: right;
+}
+
+.message.user .message-time {
+  color: rgba(255,255,255,0.7);
 }
 
 /* 反馈按钮 */

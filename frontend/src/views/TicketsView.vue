@@ -22,11 +22,21 @@ interface Ticket {
 const tickets = ref<Ticket[]>([])
 const loading = ref(false)
 const filterStatus = ref('')
+const searchQuery = ref('')
+
+// 分页
+const currentPage = ref(1)
+const pageSize = 10
+const total = ref(0)
 
 // 工单回复
 const replyText = ref('')
 const replyTicketId = ref('')
 const replying = ref(false)
+
+// 删除确认
+const deleteTicketId = ref('')
+const showDeleteConfirm = ref(false)
 
 const statusLabels: Record<string, string> = {
   pending: '待处理',
@@ -45,17 +55,32 @@ const statusColors: Record<string, string> = {
 async function loadData() {
   loading.value = true
   try {
-    const url = filterStatus.value
-      ? `${API_BASE}/api/tickets?status=${filterStatus.value}`
-      : `${API_BASE}/api/tickets`
-    const resp = await fetch(url, { headers })
+    const params = new URLSearchParams({
+      page: currentPage.value.toString(),
+      page_size: pageSize.toString(),
+    })
+    if (filterStatus.value) params.append('status', filterStatus.value)
+    if (searchQuery.value) params.append('search', searchQuery.value)
+
+    const resp = await fetch(`${API_BASE}/api/tickets?${params}`, { headers })
     const data = await resp.json()
     tickets.value = data.items
+    total.value = data.total
   } catch {
     // ignore
   } finally {
     loading.value = false
   }
+}
+
+function changePage(page: number) {
+  currentPage.value = page
+  loadData()
+}
+
+function handleSearch() {
+  currentPage.value = 1
+  loadData()
 }
 
 function startReply(ticket: Ticket) {
@@ -106,6 +131,33 @@ function onFilterChange(e: Event) {
   loadData()
 }
 
+function askDelete(ticketId: string) {
+  deleteTicketId.value = ticketId
+  showDeleteConfirm.value = true
+}
+
+async function confirmDelete() {
+  if (!deleteTicketId.value) return
+  try {
+    const resp = await fetch(`${API_BASE}/api/tickets/${deleteTicketId.value}`, {
+      method: 'DELETE',
+      headers,
+    })
+    if (resp.ok) {
+      showDeleteConfirm.value = false
+      deleteTicketId.value = ''
+      await loadData()
+    } else {
+      const err = await resp.json().catch(() => ({}))
+      alert(err.detail || '删除失败')
+    }
+  } catch {
+    alert('删除失败，请稍后再试')
+  } finally {
+    showDeleteConfirm.value = false
+  }
+}
+
 onMounted(() => {
   loadData()
 })
@@ -126,7 +178,17 @@ onMounted(() => {
         <option value="resolved">已解决</option>
         <option value="closed">已关闭</option>
       </select>
-      <span class="ticket-count">共 {{ tickets.length }} 条</span>
+
+      <label style="margin-left: 16px;">搜索：</label>
+      <input
+        v-model="searchQuery"
+        @keyup.enter="handleSearch"
+        placeholder="输入工单号或问题关键词"
+        class="search-input"
+      />
+      <button @click="handleSearch" class="btn-search">搜索</button>
+
+      <span class="ticket-count">共 {{ total }} 条</span>
     </div>
 
     <!-- 工单列表 -->
@@ -141,6 +203,7 @@ onMounted(() => {
           {{ statusLabels[ticket.status] }}
         </span>
         <span class="ticket-time">{{ ticket.created_at }}</span>
+        <button @click="askDelete(ticket.ticket_id)" class="btn-delete">🗑️ 删除</button>
       </div>
 
       <div class="ticket-question">{{ ticket.question }}</div>
@@ -205,6 +268,27 @@ onMounted(() => {
           <option value="resolved">已解决</option>
           <option value="closed">已关闭</option>
         </select>
+      </div>
+    </div>
+
+    <!-- 分页 -->
+    <div v-if="total > pageSize" class="pagination">
+      <button @click="changePage(1)" :disabled="currentPage === 1" class="btn-page">首页</button>
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="btn-page">上一页</button>
+      <span class="page-info">第 {{ currentPage }} / {{ Math.ceil(total / pageSize) }} 页</span>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage >= Math.ceil(total / pageSize)" class="btn-page">下一页</button>
+      <button @click="changePage(Math.ceil(total / pageSize))" :disabled="currentPage >= Math.ceil(total / pageSize)" class="btn-page">末页</button>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div v-if="showDeleteConfirm" class="modal-overlay" @click.self="showDeleteConfirm = false">
+      <div class="modal">
+        <h3>确认删除</h3>
+        <p>确定要删除工单 {{ deleteTicketId }} 吗？此操作不可恢复。</p>
+        <div class="modal-actions">
+          <button @click="showDeleteConfirm = false" class="btn-cancel">取消</button>
+          <button @click="confirmDelete" class="btn-delete-confirm">确认删除</button>
+        </div>
       </div>
     </div>
   </div>
@@ -471,5 +555,147 @@ onMounted(() => {
 .status-select:focus {
   outline: none;
   border-color: #4CAF50;
+}
+
+/* 搜索框 */
+.search-input {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 200px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.btn-search {
+  padding: 6px 16px;
+  background: #2196f3;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.btn-search:hover {
+  background: #1976d2;
+}
+
+/* 分页 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px 0;
+}
+
+.btn-page {
+  padding: 6px 16px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-page:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #4CAF50;
+}
+
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #666;
+}
+
+/* 删除按钮 */
+.btn-delete {
+  padding: 4px 10px;
+  background: #ffebee;
+  color: #c62828;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.btn-delete:hover {
+  background: #ffcdd2;
+}
+
+/* 删除确认弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal h3 {
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+.modal p {
+  margin-bottom: 24px;
+  color: #666;
+  font-size: 14px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-cancel {
+  padding: 8px 20px;
+  background: #f5f5f5;
+  color: #666;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-delete-confirm {
+  padding: 8px 20px;
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-delete-confirm:hover {
+  background: #d32f2f;
 }
 </style>
