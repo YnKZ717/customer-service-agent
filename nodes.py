@@ -1,10 +1,20 @@
 """节点定义 — 客服Agent的每个处理步骤"""
-from tools_vector import search_knowledge_base, save_pending_faq
+from tools_vector import search_knowledge_base, save_pending_faq, FAQ_DATA
 from tools_chunk import search_chunks
 from ticket_utils import create_ticket, transfer_to_human
+from troubleshoot_flows import (
+    match_flow, get_flow, get_step, match_branch,
+    get_solution, get_kb_context, TROUBLESHOOT_FLOWS,
+)
+from mock_tools import check_task_status, check_credits_balance, check_member_status
+from agent_logger import (
+    log_flow_start, log_kb_lookup, log_tool_call,
+    log_branch_match, log_response, log_error,
+)
 from openai import OpenAI
 from config import LLM_CONFIG, FALLBACK_MODELS
 from i18n import t
+import re
 
 # 初始化大模型客户端（主模型）
 client = OpenAI(
@@ -136,6 +146,14 @@ def classify_intent(state: dict) -> dict:
     """节点1：意图识别 — 判断用户问题类型"""
     user_input = state["user_input"]
 
+    # 如果已经预设了 intent（如多轮排查恢复），直接使用
+    if state.get("intent"):
+        return {"intent": state["intent"], "user_input": user_input}
+
+    # 优先检查是否匹配排查流程（在常规关键词之前）
+    if match_flow(user_input):
+        return {"intent": "troubleshoot", "user_input": user_input}
+
     for intent, keywords in INTENT_KEYWORDS.items():
         if any(k in user_input for k in keywords):
             return {"intent": intent, "user_input": user_input}
@@ -215,43 +233,221 @@ def handle_human(state: dict) -> dict:
 
 
 def troubleshoot(state: dict) -> dict:
-    """故障排查节点 — 多轮引导用户解决问题"""
+    """故障排查节点 — 结构化决策树 + LLM引导 + 知识库增强 + 工具调用"""
+    import json
     user_input = state["user_input"]
     history = state.get("history", [])
+    prev_flow = state.get("troubleshoot_flow", "")
+    prev_step_idx = state.get("troubleshoot_step", 0)
 
-    # 构建故障排查的 system prompt
-    troubleshoot_prompt = """你是 Neowow 平台的技术支持。用户遇到了问题，通过多轮对话引导他们排查。
+    #  1. 匹配或复用排查流程 ──
+    if prev_flow and prev_flow != "resumed":
+        flow_id = prev_flow
+    elif prev_flow == "resumed":
+        # 从历史第一条用户消息推断流程
+        flow_id = None
+        for role, content in history:
+            if role == "user":
+                flow_id = match_flow(content)
+                break
+    else:
+        flow_id = match_flow(user_input)
 
-## 排查风格
-- 简洁、专业、清晰
-- 不要过度热情，不要用"哈""呢""啦"等语气词
-- 不要加 emoji，除非用户先用了
-- 每次只问 1-2 个问题
-- 用编号列表给排查步骤
+    if not flow_id:
+        log_error("flow_match", "无法匹配排查流程", {"user_input": user_input[:50]})
+        return {"response": "请问具体遇到了什么问题？可以描述一下现象或发截图，我帮你排查。", "intent": "troubleshoot"}
 
-## 排查流程
-1. 先确认问题类型（视频/图片/音频/账户/其他）
-2. 了解具体情况（错误提示、任务 ID、操作步骤）
-3. 给出针对性的排查建议（最多 3 条）
-4. 如果问题仍未解决，主动建议转人工客服
+    log_flow_start(flow_id, user_input)
 
-## 注意
-- 不要说"请提供详细信息"
-- 不要推卸责任，给出实际建议
-"""
+    flow = get_flow(flow_id)
+    if not flow:
+        log_error("flow_not_found", f"流程 {flow_id} 不存在")
+        return {"response": "暂时无法处理这个问题，请点击「转人工客服」联系处理。", "intent": "troubleshoot"}
 
-    # 构建消息
+    # ── 2. 查知识库注入上下文 ──
+    kb_context = get_kb_context(flow, FAQ_DATA)
+    kb_categories = flow.get("kb_categories", [])
+    log_kb_lookup(kb_categories, len(kb_context.split("\n\n")) if kb_context else 0)
+
+    # ── 3. 提取用户输入中的关键信息（TaskID等）──
+    extracted_info = _extract_info_from_input(user_input)
+    tool_results = []
+
+    # 如果用户提供了 TaskID，自动查询任务状态
+    if extracted_info.get("task_id"):
+        task_result = check_task_status(extracted_info["task_id"])
+        log_tool_call("check_task_status", {"task_id": extracted_info["task_id"]}, task_result)
+        tool_results.append(("task_status", task_result))
+
+    # 如果用户提到积分/余额，查询积分
+    if any(kw in user_input for kw in ["积分", "余额", "扣费"]):
+        credits_result = check_credits_balance()
+        log_tool_call("check_credits_balance", {}, credits_result)
+        tool_results.append(("credits", credits_result))
+
+    # 如果用户提到会员，查询会员状态
+    if any(kw in user_input for kw in ["会员", "到期", "续费"]):
+        member_result = check_member_status()
+        log_tool_call("check_member_status", {}, member_result)
+        tool_results.append(("member", member_result))
+
+    # ─ 4. 确定当前步骤 ──
+    if not prev_flow:
+        # 首轮：直接问第一步
+        current_step = get_step(flow, "step0")
+        current_step_idx = 0
+    else:
+        # 继续对话：根据用户回答匹配上一轮的分支
+        prev_step = get_step(flow, f"step{prev_step_idx}")
+        if prev_step:
+            next_id = match_branch(prev_step, user_input)
+            log_branch_match(f"step{prev_step_idx}", user_input, next_id)
+        else:
+            next_id = "done"
+
+        # 判断下一步是解决方案还是新步骤
+        if next_id == "done":
+            # 排查结束，建议转工单
+            log_response(prev_step_idx + 1, "建议转工单", is_final=True)
+            return {
+                "response": (
+                    "如果问题仍未解决，建议点击「转人工客服」提交工单。\n"
+                    "请在工单中附上 TaskID 和画布浏览器地址，客服会尽快帮你排查。"
+                ),
+                "intent": "troubleshoot",
+                "troubleshoot_flow": flow_id,
+                "troubleshoot_step": flow["max_steps"],
+            }
+        elif next_id in flow.get("solutions", {}):
+            # 匹配到解决方案
+            solution = get_solution(flow, next_id)
+            is_final = prev_step_idx + 1 >= flow["max_steps"]
+
+            # 如果有工具查询结果，注入到回复中
+            if tool_results:
+                solution = _inject_tool_results(solution, tool_results)
+
+            log_response(prev_step_idx + 1, solution[:50], is_final=is_final)
+
+            result = {
+                "response": solution,
+                "intent": "troubleshoot",
+                "troubleshoot_flow": flow_id,
+                "troubleshoot_step": prev_step_idx + 1,
+            }
+            if is_final:
+                result["response"] += "\n\n如以上方法未能解决，请点击「转人工客服」提交工单，附上 TaskID，客服会帮你处理。"
+            return result
+        else:
+            # 进入下一步骤
+            current_step = get_step(flow, next_id)
+            current_step_idx = prev_step_idx + 1
+
+    # ── 5. 构建 LLM prompt（带决策树约束 + 工具结果）──
+    flow_structure = _format_flow_structure(flow)
+
+    # 构建工具结果上下文
+    tool_context = ""
+    if tool_results:
+        tool_context = "\n\n## 已查询到的信息\n"
+        for tool_name, tool_result in tool_results:
+            tool_context += f"- {tool_name}: {json.dumps(tool_result, ensure_ascii=False)}\n"
+
+    troubleshoot_prompt = f"""你是 Neowow 平台的技术支持，正在通过结构化流程引导用户排查问题。
+
+## 当前排查流程
+{flow_structure}
+
+## 知识库参考（与当前问题相关的FAQ）
+{kb_context if kb_context else "（暂无相关FAQ）"}
+{tool_context}
+
+## 回答规则
+- 简洁、直接、有条理，用编号或分点说明
+- 不要加emoji，不要用"哈""呢""啦"等语气词
+- 保持AI客服特征，不需要伪装成真人
+- 当前应该问的问题是："{current_step['question'] if current_step else '建议转人工客服'}"
+- 根据用户回答判断下一步，严格按照流程走
+- 如果已查询到任务状态/积分/会员信息，在回答中引用这些数据
+- 如果问题已解决，给出解决方案
+- 如果排查步数已达上限({flow['max_steps']}步)，主动建议点击「转人工客服」提交工单"""
+
     messages = [{"role": "system", "content": troubleshoot_prompt}]
 
-    # 添加最近 4 轮对话历史（故障排查需要更多上下文）
+    # 添加最近对话历史
     for role, content in history[-8:]:
         messages.append({"role": "user" if role == "user" else "assistant", "content": content})
 
     messages.append({"role": "user", "content": user_input})
 
+    # ── 6. 调用 LLM ──
+    reply = _call_llm(messages)
+
+    log_response(current_step_idx, reply[:50])
+
+    return {
+        "response": reply,
+        "intent": "troubleshoot",
+        "troubleshoot_flow": flow_id,
+        "troubleshoot_step": current_step_idx,
+    }
+
+
+def _extract_info_from_input(text: str) -> dict:
+    """从用户输入中提取关键信息（TaskID等）"""
+    import re
+    info = {}
+
+    # 提取 TaskID（32位十六进制）
+    task_match = re.search(r'[a-f0-9]{32}', text.lower())
+    if task_match:
+        info["task_id"] = task_match.group(0)
+
+    return info
+
+
+def _inject_tool_results(solution: str, tool_results: list) -> str:
+    """将工具查询结果注入到解决方案中"""
+    import json
+    for tool_name, result in tool_results:
+        if tool_name == "task_status":
+            status = result.get("status", "未知")
+            error = result.get("error_message", "")
+            if status == "failed":
+                solution += f"\n\n【查询结果】您的任务状态为：失败\n【失败原因】{error}"
+            elif status == "processing":
+                progress = result.get("progress", 0)
+                solution += f"\n\n【查询结果】您的任务正在处理中，当前进度：{progress}%"
+            elif status == "completed":
+                solution += "\n\n【查询结果】您的任务已完成，请查看生成结果。"
+        elif tool_name == "credits":
+            balance = result.get("credits_balance", 0)
+            solution += f"\n\n【账户信息】当前积分余额：{balance}"
+        elif tool_name == "member":
+            level = result.get("member_level", "无")
+            days = result.get("days_remaining", 0)
+            solution += f"\n\n【会员信息】等级：{level}，剩余{days}天"
+
+    return solution
+
+def _format_flow_structure(flow: dict) -> str:
+    """将决策树格式化为 LLM 可读的文本"""
+    lines = [f"流程名称：{flow['name']}"]
+    lines.append(f"最大排查步数：{flow['max_steps']}")
+    lines.append("")
+    for step in flow.get("steps", []):
+        lines.append(f"步骤 {step['id']}: {step['question']}")
+        for branch in step.get("branches", []):
+            lines.append(f"  → 用户提到{branch['keywords']} → {branch['next']}")
+        lines.append(f"  → 其他 → {step.get('default_next', 'done')}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _call_llm(messages: list) -> str:
+    """调用 LLM（主模型 + 自动重试 + 备用模型降级）"""
     reply = None
 
-    # 主模型调用（失败自动重试 1 次）
     for attempt in range(2):
         try:
             if attempt == 1:
@@ -260,7 +456,7 @@ def troubleshoot(state: dict) -> dict:
                 model=LLM_CONFIG["model_name"],
                 messages=messages,
                 max_tokens=600,
-                temperature=0.5,
+                temperature=0.3,
             )
             reply = response.choices[0].message.content
             break
@@ -269,7 +465,6 @@ def troubleshoot(state: dict) -> dict:
             if attempt == 0:
                 continue
 
-    # 主模型彻底失败，尝试备用模型
     if reply is None:
         print("[模型降级] 主模型重试失败，切换备用模型...")
         for i, fb_client in enumerate(fallback_clients):
@@ -280,22 +475,17 @@ def troubleshoot(state: dict) -> dict:
                     model=fm["model_name"],
                     messages=messages,
                     max_tokens=600,
-                    temperature=0.5,
+                    temperature=0.3,
                 )
                 reply = response.choices[0].message.content
-                print("[模型降级] 备用模型成功")
                 break
-            except Exception as e2:
-                print(f"[模型降级] 备用模型 {i+1} 也失败：{str(e2)[:50]}")
+            except Exception:
                 continue
 
     if reply is None:
-        reply = "抱歉，系统暂时繁忙，请稍后再试。如需紧急帮助，请输入'转人工'。"
+        reply = "抱歉，系统暂时繁忙，请稍后再试。如需紧急帮助，请点击「转人工客服」。"
 
-    return {
-        "response": reply,
-        "intent": "troubleshoot",
-    }
+    return reply
 
 
 def general_reply(state: dict) -> dict:

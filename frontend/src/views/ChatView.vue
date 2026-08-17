@@ -18,6 +18,8 @@ interface Message {
   id?: string  // 唯一 ID，用于反馈
   rated?: boolean  // 是否已评价
   images?: string[]  // FAQ 命中的截图
+  isTroubleshooting?: boolean  // 是否在排查流程中
+  troubleshootStep?: number    // 当前排查步骤
 }
 
 // ── localStorage 持久化 ──
@@ -100,9 +102,17 @@ async function sendMessage(text: string) {
     if (data.kb_images && data.kb_images.length > 0) {
       replyMsg.images = data.kb_images
     }
+    if (data.is_troubleshooting) {
+      replyMsg.isTroubleshooting = true
+      replyMsg.troubleshootStep = data.troubleshoot_step
+    }
     messages.value.push(replyMsg)
     chatHistory.value.push(['user', text])
-    chatHistory.value.push(['assistant', data.response])
+    // 排查回复加上标记，后端据此恢复排查状态
+    const historyContent = data.is_troubleshooting
+      ? `🔍 故障排查中（第${(data.troubleshoot_step || 0) + 1}步）\n${data.response}`
+      : data.response
+    chatHistory.value.push(['assistant', historyContent])
 
     refreshStats()
   } catch (err) {
@@ -240,6 +250,10 @@ function closeImagePreview() {
           <div class="message-bubble">
             <p>{{ msg.content }}</p>
             <p v-if="msg.ticketId" class="ticket-id">工单号：{{ msg.ticketId }}</p>
+          </div>
+          <!-- 排查状态指示器 -->
+          <div v-if="msg.isTroubleshooting" class="troubleshoot-badge">
+            🔍 故障排查中（第{{ (msg.troubleshootStep || 0) + 1 }}步）
           </div>
           <!-- FAQ 截图 -->
           <div v-if="msg.images && msg.images.length" class="faq-images">
@@ -493,6 +507,19 @@ function closeImagePreview() {
 .feedback-thanks {
   font-size: 12px;
   color: #4CAF50;
+}
+
+/* 排查状态指示器 */
+.troubleshoot-badge {
+  font-size: 11px;
+  color: #ff9800;
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  padding: 3px 10px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-top: 6px;
+  width: fit-content;
 }
 
 .thinking {

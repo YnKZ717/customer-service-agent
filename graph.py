@@ -25,6 +25,8 @@ class AgentState(dict):
     history: list            # 对话历史 [(role, content), ...]
     ticket_id: str           # 工单号（转人工时生成）
     ticket_summary: str      # 工单摘要
+    troubleshoot_flow: str   # 当前排查流程 ID（如 "video_fail"）
+    troubleshoot_step: int   # 当前排查步骤（0, 1, 2...）
 
 
 def build_graph():

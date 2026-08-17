@@ -1,0 +1,29 @@
+{"timestamp": "2026-08-17 14:09:46.386", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 14:09:46.387", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 14:09:47.129", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 14:09:56.239", "step": "flow_start", "flow_id": "video_fail", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f"}
+{"timestamp": "2026-08-17 14:09:56.239", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 14:09:56.542", "step": "tool_call", "tool": "check_task_status", "params": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f"}, "result": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f", "type": "text_to_video", "status": "failed", "error_code": "copyright_restricted", "error_message": "检测到版权敏感元素", "created_at": "2026-08-17 16:20:15", "model": "kling-v2.5", "duration": 5, "resolution": "1080P"}}
+{"timestamp": "2026-08-17 14:09:56.545", "step": "step0", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f", "matched_branch": "step1"}
+{"timestamp": "2026-08-17 14:09:58.488", "step": 1, "response": "根据你提供的 TaskID，我查询到该任务状态如下：\n\n- **任务ID**：8078e05dfc5", "is_final": false}
+{"timestamp": "2026-08-17 14:23:06.562", "step": "flow_start", "flow_id": "video_fail", "user_input": "积分突然少了好多"}
+{"timestamp": "2026-08-17 14:23:06.562", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 14:23:06.764", "step": "tool_call", "tool": "check_credits_balance", "params": {}, "result": {"user_id": "test_user_001", "credits_balance": 2850, "member_level": "PLUS", "member_expire": "2026-09-15 23:59:59", "monthly_quota": 50, "monthly_used": 23}}
+{"timestamp": "2026-08-17 14:23:06.766", "step": "step1", "user_input": "积分突然少了好多", "matched_branch": "step2"}
+{"timestamp": "2026-08-17 14:23:09.041", "step": 2, "response": "🔍 故障排查中（第3步）\n\n我查询到你的账户信息如下：\n\n- **当前积分余额**：2850\n- *", "is_final": false}
+{"timestamp": "2026-08-17 14:30:27.750", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 14:30:27.751", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 14:30:28.596", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 14:30:51.618", "step": "flow_start", "flow_id": "video_fail", "user_input": "积分突然少了好多"}
+{"timestamp": "2026-08-17 14:30:51.619", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 14:30:51.821", "step": "tool_call", "tool": "check_credits_balance", "params": {}, "result": {"user_id": "test_user_001", "credits_balance": 2850, "member_level": "PLUS", "member_expire": "2026-09-15 23:59:59", "monthly_quota": 50, "monthly_used": 23}}
+{"timestamp": "2026-08-17 14:30:51.821", "step": "step0", "user_input": "积分突然少了好多", "matched_branch": "solve_credits"}
+{"timestamp": "2026-08-17 14:30:51.822", "step": 1, "response": "积分不足无法生成。可在账户中心查看积分余额和明细。\n充值方式：支付宝/微信支付/银行卡（1积分=¥0", "is_final": false}
+{"timestamp": "2026-08-17 14:33:19.335", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 14:33:19.336", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 14:33:20.315", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 14:33:41.100", "step": "flow_start", "flow_id": "video_fail", "user_input": "会员快到期了怎么办"}
+{"timestamp": "2026-08-17 14:33:41.101", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 14:33:41.302", "step": "tool_call", "tool": "check_member_status", "params": {}, "result": {"user_id": "test_user_001", "member_level": "PLUS", "member_expire": "2026-09-15 23:59:59", "days_remaining": 29, "benefits": ["消费95折优惠", "每月50次免费生成", "支持2K画质", "最长10秒视频"]}}
+{"timestamp": "2026-08-17 14:33:41.306", "step": "step0", "user_input": "会员快到期了怎么办", "matched_branch": "step1"}
+{"timestamp": "2026-08-17 14:33:42.270", "step": 1, "response": "您当前是 PLUS 会员，会员有效期至 2026-09-15，剩余 29 天，暂时不需要担心到期问题", "is_final": false}

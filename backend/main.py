@@ -109,6 +109,8 @@ class ChatResponse(BaseModel):
     chunk_found: bool
     ticket_id: str = ""
     kb_images: list = []  # FAQ 命中的截图
+    is_troubleshooting: bool = False  # 是否在排查流程中
+    troubleshoot_step: int = 0        # 当前排查步骤
 
 
 class ErrorResponse(BaseModel):
@@ -254,9 +256,27 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
 
         # ── 正常 Agent 对话流程 ──
 
+        # ─ 从 history 恢复排查状态（多轮对话）──
+        prev_troubleshoot_flow = ""
+        prev_troubleshoot_step = 0
+        initial_intent = ""
+        if request.history:
+            # 检查最近一轮 assistant 回复是否携带排查标记
+            for i in range(len(request.history) - 1, -1, -1):
+                role, content = request.history[i]
+                if role == "assistant" and "故障排查中" in content:
+                    # 尝试从内容中推断步骤数
+                    import re
+                    m = re.search(r'第(\d+)步', content)
+                    if m:
+                        prev_troubleshoot_step = int(m.group(1)) - 1  # 0-indexed
+                    prev_troubleshoot_flow = "resumed"  # 标记为恢复模式
+                    initial_intent = "troubleshoot"  # 强制走排查节点
+                    break
+
         result = agent_app.invoke({
             "user_input": request.user_input,
-            "intent": "",
+            "intent": initial_intent,
             "response": "",
             "kb_found": False,
             "kb_reference": "",
@@ -267,6 +287,8 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
             "history": request.history or [],
             "ticket_id": "",
             "ticket_summary": "",
+            "troubleshoot_flow": prev_troubleshoot_flow,
+            "troubleshoot_step": prev_troubleshoot_step,
         })
 
         response_text = result.get("response", "")
@@ -277,6 +299,13 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
         stat_type = "kb" if kb_found else "llm"
         record_stat(stat_type)
 
+        # 排查状态
+        is_troubleshooting = bool(result.get("troubleshoot_flow", ""))
+        troubleshoot_step = result.get("troubleshoot_step", 0)
+        if is_troubleshooting:
+            stat_type = "troubleshoot"
+            record_stat(stat_type)
+
         return ChatResponse(
             response=response_text,
             intent=result.get("intent", ""),
@@ -285,6 +314,8 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
             chunk_found=result.get("chunk_found", False),
             ticket_id=result.get("ticket_id", ""),
             kb_images=result.get("kb_images", []),
+            is_troubleshooting=is_troubleshooting,
+            troubleshoot_step=troubleshoot_step,
         )
     except HTTPException:
         raise
