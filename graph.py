@@ -8,6 +8,7 @@ from nodes import (
     handle_human,
     general_reply,
     troubleshoot,
+    evaluate_response,
 )
 
 
@@ -40,6 +41,7 @@ def build_graph():
     graph.add_node("troubleshoot", troubleshoot)      # 故障排查（多轮引导）
     graph.add_node("human", handle_human)             # 转人工
     graph.add_node("general", general_reply)          # 通用回复（大模型兜底）
+    graph.add_node("evaluate", evaluate_response)     # 副Agent：评估+修正回答
 
     # ── 入口 ──
     graph.set_entry_point("classify")
@@ -97,6 +99,7 @@ def build_graph():
     # ── 其他分支 → 结束 ──
     graph.add_edge("human", END)
     graph.add_edge("troubleshoot", END)
-    graph.add_edge("general", END)
+    graph.add_edge("general", "evaluate")
+    graph.add_edge("evaluate", END)
 
     return graph.compile()

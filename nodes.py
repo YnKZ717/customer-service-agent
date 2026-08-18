@@ -559,3 +559,90 @@ def general_reply(state: dict) -> dict:
         save_pending_faq(user_input, reply, history)
 
     return {"response": reply, "intent": "general"}
+
+
+def evaluate_response(state: dict) -> dict:
+    """副Agent节点：评估并修正主Agent的回答"""
+    user_input = state["user_input"]
+    response = state.get("response", "")
+    intent = state.get("intent", "general")
+    kb_reference = state.get("kb_reference", "")
+    chunk_reference = state.get("chunk_reference", "")
+
+    # 只评估 general 意图的回答，排查和知识库回答已经有结构化保障
+    if intent in ("troubleshoot", "human"):
+        return {"response": response, "intent": intent}
+
+    if not response:
+        return state
+
+    # 合并参考内容作为评判依据
+    all_reference = ""
+    if kb_reference:
+        all_reference += "【FAQ参考】\n" + kb_reference + "\n\n"
+    if chunk_reference:
+        all_reference += "【文档片段参考】\n" + chunk_reference
+
+    eval_prompt = f"""你是 Neowow 智能客服的质量审核员。请检查以下客服回答，如有问题直接修正。
+
+## 用户问题
+{user_input}
+
+## 客服回答
+{response}
+
+{all_reference if all_reference else "（暂无知识库参考）"}
+
+## 检查项
+1. 准确性：回答是否与知识库/产品事实一致，有没有编造不存在的信息
+2. 完整性：是否遗漏了用户问题的关键部分
+3. 语气：是否简洁直接、没有emoji、没有"哈/呢/啦"等语气词
+4. 安全：是否暴露了内部系统信息或给出了错误的操作指引
+
+## 输出格式
+如果回答完全没问题，只输出：
+PASS
+
+如果回答有问题，输出修正后的完整回答（不要解释，直接给修正版）：
+FIXED: <修正后的完整回答>
+"""
+
+    messages = [{"role": "user", "content": eval_prompt}]
+
+    reply = None
+    for attempt in range(2):
+        try:
+            fb_client = None
+            for fm in FALLBACK_MODELS:
+                if fm["api_key"] and fm["base_url"]:
+                    fb_client = OpenAI(api_key=fm["api_key"], base_url=fm["base_url"])
+                    break
+
+            eval_client = fb_client if fb_client else client
+            eval_model = FALLBACK_MODELS[0]["model_name"] if fb_client else LLM_CONFIG["model_name"]
+
+            resp = eval_client.chat.completions.create(
+                model=eval_model,
+                messages=messages,
+                max_tokens=400,
+                temperature=0.1,
+            )
+            reply = resp.choices[0].message.content.strip()
+            break
+        except Exception as e:
+            if attempt == 0:
+                continue
+
+    if not reply:
+        return state
+
+    # 解析结果
+    if reply.startswith("PASS"):
+        return state
+
+    if reply.startswith("FIXED:"):
+        fixed = reply[6:].strip()
+        return {"response": fixed, "intent": intent}
+
+    # 如果 LLM 没按格式输出，保守起见保留原回答
+    return state
