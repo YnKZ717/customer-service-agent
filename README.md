@@ -62,7 +62,24 @@ pip install -r ../requirements.txt
 # 前端依赖
 cd ../frontend
 npm install
+
+# 配置 API Key（复制模板并填入你的 Key）
+cp ../.env.example ../.env
+# 编辑 .env 文件，填入你的 API 密钥
 ```
+
+### API 配置
+
+`.env` 文件支持任何兼容 OpenAI 格式的服务：
+
+| 服务商 | BASE_URL | MODEL |
+|--------|----------|-------|
+| DeepSeek | https://api.deepseek.com/v1 | deepseek-chat |
+| OpenAI | https://api.openai.com/v1 | gpt-4o |
+| 本地 Ollama | http://localhost:11434/v1 | llama3 |
+| 阿里云 DashScope | https://dashscope.aliyuncs.com/compatible-mode/v1 | qwen-max |
+
+编辑 `.env` 文件，填入对应的 API Key 和 BASE_URL 即可。
 
 ### 启动
 
