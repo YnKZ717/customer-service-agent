@@ -19,7 +19,7 @@
 | 后端 | Python 3.12, FastAPI, LangGraph |
 | 前端 | Vue3, TypeScript, Vite |
 | 向量库 | ChromaDB, text2vec-base-chinese |
-| 大模型 | OpenAI 兼容接口（支持多模型降级） |
+| 大模型 | OpenAI 兼容接口（DeepSeek/OpenAI/Ollama/阿里云等，支持多模型降级） |
 | 认证 | JWT (PyJWT) |
 
 ## 项目结构
