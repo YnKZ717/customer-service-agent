@@ -9,7 +9,7 @@ from troubleshoot_flows import (
 from mock_tools import check_task_status, check_credits_balance, check_member_status
 from agent_logger import (
     log_flow_start, log_kb_lookup, log_tool_call,
-    log_branch_match, log_response, log_error,
+    log_branch_match, log_response, log_error, log_step,
 )
 from openai import OpenAI
 from config import LLM_CONFIG, FALLBACK_MODELS
@@ -190,6 +190,10 @@ def answer_from_kb(state: dict) -> dict:
     }
     if images:
         result["kb_images"] = images
+    log_step("kb_answer", user_input=query[:50], kb_category=question or "未匹配", response=answer[:100])
+    print(f"[主Agent] kb_answer | 问题：{query[:30]}...")
+    print(f"[主Agent] 知识库命中：{question or "未匹配"}")
+    print(f"[主Agent] 回答：{answer[:50]}...")
     return result
 
 
@@ -558,6 +562,9 @@ def general_reply(state: dict) -> dict:
     if reply and not reply.startswith("系统暂时繁忙") and not reply.startswith("Service temporarily") and not reply.startswith("抱歉"):
         save_pending_faq(user_input, reply, history)
 
+    log_step("general_reply", user_input=user_input[:50], response=reply[:100], intent="general")
+    print(f"[主Agent] general_reply | 问题：{user_input[:30]}...")
+    print(f"[主Agent] 回答：{reply[:50]}...")
     return {"response": reply, "intent": "general"}
 
 
@@ -569,8 +576,13 @@ def evaluate_response(state: dict) -> dict:
     kb_reference = state.get("kb_reference", "")
     chunk_reference = state.get("chunk_reference", "")
 
-    # 只评估 general 意图的回答，排查和知识库回答已经有结构化保障
+    # 只评估没有知识库参考的通用回复
     if intent in ("troubleshoot", "human"):
+        return {"response": response, "intent": intent}
+    # 有知识库或Chunk参考时，回答有依据，不需要副Agent检查
+    kb_ref = state.get("kb_reference", "")
+    chunk_ref = state.get("chunk_reference", "")
+    if kb_ref or chunk_ref:
         return {"response": response, "intent": intent}
 
     if not response:
@@ -638,11 +650,18 @@ FIXED: <修正后的完整回答>
 
     # 解析结果
     if reply.startswith("PASS"):
+        log_step("evaluate", result="PASS", user_input=user_input[:50])
+        print(f"[副Agent] PASS | 问题: {user_input[:30]}...")
         return state
 
     if reply.startswith("FIXED:"):
         fixed = reply[6:].strip()
+        log_step("evaluate", result="FIXED", user_input=user_input[:50], fixed_response=fixed[:100])
+        print(f"[副Agent] FIXED | 问题: {user_input[:30]}...")
+        print(f"[副Agent] 修正: {fixed[:50]}...")
         return {"response": fixed, "intent": intent}
 
     # 如果 LLM 没按格式输出，保守起见保留原回答
+    log_step("evaluate", result="UNKNOWN", reply=reply[:100])
+    print(f"[副Agent] 未知格式 | 回答: {reply[:50]}...")
     return state
