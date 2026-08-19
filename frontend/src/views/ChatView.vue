@@ -61,12 +61,21 @@ watch(
 async function sendMessage(text: string) {
   if (!text.trim() || loading.value) return
 
+  // 添加用户消息
   const userMsg: Message = { role: 'user', content: text, id: `msg-${Date.now()}`, timestamp: new Date() }
   messages.value.push(userMsg)
   userInput.value = ''
   loading.value = true
 
-  let replyIndex = -1  // 记录回复消息的索引
+  // 立即创建空回复（显示机器人头像 + 思考中动画）
+  const replyId = `msg-${Date.now()}-reply`
+  const replyIndex = messages.value.length
+  messages.value.push({
+    role: 'assistant',
+    content: '',
+    id: replyId,
+    timestamp: new Date(),
+  })
 
   try {
     const resp = await fetch(`${API_BASE}/api/chat/stream`, {
@@ -82,7 +91,6 @@ async function sendMessage(text: string) {
     const reader = resp.body?.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
-    let metaReceived = false
     let fullResponse = ''
     let isTroubleshooting = false
     let troubleshootStep = 0
@@ -108,8 +116,7 @@ async function sendMessage(text: string) {
             const parsed = JSON.parse(data)
 
             // 第一条是元数据
-            if (!metaReceived && parsed.intent !== undefined) {
-              metaReceived = true
+            if (parsed.intent !== undefined && fullResponse === '') {
               if (parsed.kb_images && parsed.kb_images.length > 0) {
                 images = parsed.kb_images
               }
@@ -117,34 +124,21 @@ async function sendMessage(text: string) {
                 isTroubleshooting = true
                 troubleshootStep = parsed.troubleshoot_step
               }
-              // 收到元数据后创建第一条回复消息
-              if (replyIndex === -1) {
-                messages.value.push({
-                  role: 'assistant',
-                  content: '',
-                  id: `msg-${Date.now()}-reply`,
-                  timestamp: new Date(),
-                  images: images.length > 0 ? images : undefined,
-                  isTroubleshooting,
-                  troubleshootStep: troubleshootStep + 1,
-                })
-                replyIndex = messages.value.length - 1
-              }
               continue
             }
 
             // 后续是逐字内容
             if (parsed.chunk) {
               fullResponse += parsed.chunk
-              // 通过替换整个消息对象触发 Vue 响应式更新
-              if (replyIndex !== -1) {
-                messages.value[replyIndex] = {
-                  ...messages.value[replyIndex],
-                  content: fullResponse,
-                  images: images.length > 0 ? images : undefined,
-                  isTroubleshooting,
-                  troubleshootStep: troubleshootStep + 1,
-                }
+              // 直接修改数组元素触发 Vue 响应式
+              messages.value[replyIndex] = {
+                role: 'assistant',
+                content: fullResponse,
+                id: replyId,
+                timestamp: messages.value[replyIndex].timestamp,
+                images: images.length > 0 ? images : undefined,
+                isTroubleshooting,
+                troubleshootStep: isTroubleshooting ? troubleshootStep + 1 : undefined,
               }
               // 每 5 个字符滚动一次
               if (fullResponse.length % 5 === 0) {
@@ -161,18 +155,16 @@ async function sendMessage(text: string) {
     // 添加到历史记录
     chatHistory.value.push(['user', text])
     const historyContent = isTroubleshooting
-      ? `🔍 故障排查中（第${troubleshootStep + 1}步）\n${fullResponse}`
+      ? ` 故障排查中（第${troubleshootStep + 1}步）\n${fullResponse}`
       : fullResponse
     chatHistory.value.push(['assistant', historyContent])
 
     refreshStats()
   } catch (err) {
-    // 如果有占位消息，更新为错误信息
-    if (replyIndex !== -1) {
-      messages.value[replyIndex] = {
-        ...messages.value[replyIndex],
-        content: '抱歉，服务暂时不可用，请稍后再试。',
-      }
+    // 更新错误信息
+    messages.value[replyIndex] = {
+      ...messages.value[replyIndex],
+      content: '抱歉，服务暂时不可用，请稍后再试。',
     }
   } finally {
     loading.value = false
