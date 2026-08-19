@@ -35,9 +35,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, AsyncGenerator
 import uvicorn
 
 # 导入现有模块
@@ -774,3 +774,133 @@ if __name__ == "__main__":
     logger.info("日志目录: %s", LOG_DIR)
     logger.info("=" * 50)
     uvicorn.run(app, host="0.0.0.0", port=8001)
+
+
+# ── 流式对话接口 ─────────────────────────────────────────────
+
+@app.post("/api/chat/stream")
+async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
+    """客服对话接口（流式）— SSE 逐字推送"""
+    try:
+        logger.info("用户提问 (流式): %s (历史: %d 轮)", request.user_input[:50], len(request.history or []) // 2)
+
+        # 自动检测 TaskID 错误
+        error_ids = extract_error_ids(request.user_input)
+        is_in_troubleshoot = False
+        if request.history:
+            for i in range(len(request.history) - 1, -1, -1):
+                role, content_h = request.history[i]
+                if role == "assistant" and "故障排查中" in content_h:
+                    is_in_troubleshoot = True
+                    break
+
+        if error_ids and 'task_id' in error_ids and not is_in_troubleshoot:
+            is_copyright = is_copyright_error(request.user_input)
+            ticket = create_ticket(
+                user_input=request.user_input,
+                history=request.history or [],
+                priority="high" if is_copyright else "normal",
+                tags=(["版权豁免"] if is_copyright else []) + ["自动创建"],
+            )
+            tickets = load_tickets()
+            for t in tickets:
+                if t['ticket_id'] == ticket['ticket_id']:
+                    t['task_id'] = error_ids.get('task_id', '')
+                    t['session_id'] = error_ids.get('session_id', '')
+                    t['node_id'] = error_ids.get('node_id', '')
+                    break
+            save_tickets(tickets)
+
+            if is_copyright:
+                response_text = f"检测到版权限制报错，已为您自动创建高优先级工单（工单号：{ticket['ticket_id']}）。客服将在后台为您申请内容豁免，请稍候。"
+            else:
+                response_text = f"已收到您的报错信息，已创建工单（工单号：{ticket['ticket_id']}），客服将尽快排查。TaskID：{error_ids.get('task_id', '')}"
+
+            logger.info("自动创建工单 (流式): %s (版权=%s)", ticket['ticket_id'], is_copyright)
+            record_stat("ticket")
+
+            # 一次性返回（工单不需要流式）
+            async def error_gen():
+                yield f"data: {json.dumps({'response': response_text, 'intent': 'auto_ticket', 'kb_found': False, 'ticket_id': ticket['ticket_id']}, ensure_ascii=False)}\n\n"
+                yield "data: [DONE]\n\n"
+
+            return StreamingResponse(error_gen(), media_type="text/event-stream")
+
+        # 恢复排查状态
+        prev_troubleshoot_flow = ""
+        prev_troubleshoot_step = 0
+        initial_intent = ""
+        if request.history:
+            for i in range(len(request.history) - 1, -1, -1):
+                role, content = request.history[i]
+                if role == "assistant" and "故障排查中" in content:
+                    import re
+                    m = re.search(r'第 (\d+) 步', content)
+                    if m:
+                        prev_troubleshoot_step = int(m.group(1)) - 1
+                    prev_troubleshoot_flow = "resumed"
+                    initial_intent = "troubleshoot"
+                    break
+
+        # 调用 Agent
+        result = agent_app.invoke({
+            "user_input": request.user_input,
+            "intent": initial_intent,
+            "response": "",
+            "kb_found": False,
+            "kb_reference": "",
+            "kb_category": "",
+            "kb_images": [],
+            "chunk_found": False,
+            "chunk_reference": "",
+            "history": request.history or [],
+            "ticket_id": "",
+            "ticket_summary": "",
+            "troubleshoot_flow": prev_troubleshoot_flow,
+            "troubleshoot_step": prev_troubleshoot_step,
+        })
+
+        response_text = result.get("response", "")
+        kb_found = result.get("kb_found", False)
+        source = "知识库" if kb_found else "大模型"
+        logger.info("回答来源 (流式): %s | 分类: %s | 回答长度: %d 字", source, result.get("kb_category", "-"), len(response_text))
+
+        # 记录统计
+        stat_type = "kb" if kb_found else "llm"
+        record_stat(stat_type)
+
+        # 排查状态
+        is_troubleshooting = bool(result.get("troubleshoot_flow", ""))
+        troubleshoot_step = result.get("troubleshoot_step", 0)
+        if is_troubleshooting:
+            record_stat("troubleshoot")
+
+        # SSE 流式推送
+        async def stream_gen():
+            # 推送元数据
+            meta = {
+                "intent": result.get("intent", ""),
+                "kb_found": kb_found,
+                "kb_category": result.get("kb_category", ""),
+                "chunk_found": result.get("chunk_found", False),
+                "ticket_id": result.get("ticket_id", ""),
+                "kb_images": result.get("kb_images", []),
+                "is_troubleshooting": is_troubleshooting,
+                "troubleshoot_step": troubleshoot_step,
+            }
+            yield f"data: {json.dumps(meta, ensure_ascii=False)}\n\n"
+
+            # 逐字推送回答
+            for char in response_text:
+                yield f"data: {json.dumps({'chunk': char}, ensure_ascii=False)}\n\n"
+
+            # 结束标记
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(stream_gen(), media_type="text/event-stream")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("处理流式聊天请求时出错：%s", str(e))
+        raise HTTPException(status_code=500, detail="处理请求失败，请稍后再试")

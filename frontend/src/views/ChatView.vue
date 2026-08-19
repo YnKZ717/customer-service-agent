@@ -66,37 +66,88 @@ async function sendMessage(text: string) {
   userInput.value = ''
   loading.value = true
 
+  // 创建占位回复消息（用于流式显示）
+  const replyMsg: Message = {
+    role: 'assistant',
+    content: '',
+    id: `msg-${Date.now()}-reply`,
+    timestamp: new Date(),
+  }
+  messages.value.push(replyMsg)
+
   try {
-    const resp = await fetch(`${API_BASE}/api/chat`, {
+    const resp = await fetch(`${API_BASE}/api/chat/stream`, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({ user_input: text, history: chatHistory.value }),
     })
-    const data = await resp.json()
-    const replyMsg: Message = {
-      role: 'assistant',
-      content: data.response,
-      id: `msg-${Date.now()}-reply`,
-      timestamp: new Date(),
+
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`)
     }
-    if (data.kb_images && data.kb_images.length > 0) {
-      replyMsg.images = data.kb_images
+
+    const reader = resp.body?.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let metaReceived = false
+    let fullResponse = ''
+
+    while (true) {
+      const { done, value } = await reader!.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim()
+
+          if (data === '[DONE]') {
+            // 流结束
+            continue
+          }
+
+          try {
+            const parsed = JSON.parse(data)
+
+            // 第一条是元数据
+            if (!metaReceived && parsed.intent !== undefined) {
+              metaReceived = true
+              if (parsed.kb_images && parsed.kb_images.length > 0) {
+                replyMsg.images = parsed.kb_images
+              }
+              if (parsed.is_troubleshooting) {
+                replyMsg.isTroubleshooting = true
+                replyMsg.troubleshootStep = parsed.troubleshoot_step
+              }
+              continue
+            }
+
+            // 后续是逐字内容
+            if (parsed.chunk) {
+              fullResponse += parsed.chunk
+              replyMsg.content = fullResponse
+              nextTick(() => scrollToBottom())
+            }
+          } catch {
+            // 忽略解析错误
+          }
+        }
+      }
     }
-    if (data.is_troubleshooting) {
-      replyMsg.isTroubleshooting = true
-      replyMsg.troubleshootStep = data.troubleshoot_step
-    }
-    messages.value.push(replyMsg)
+
+    // 添加到历史记录
     chatHistory.value.push(['user', text])
-    // 排查回复加上标记，后端据此恢复排查状态
-    const historyContent = data.is_troubleshooting
-      ? `🔍 故障排查中（第${(data.troubleshoot_step || 0) + 1}步）\n${data.response}`
-      : data.response
+    const historyContent = replyMsg.isTroubleshooting
+      ? `🔍 故障排查中（第${(replyMsg.troubleshootStep || 0) + 1}步）\n${fullResponse}`
+      : fullResponse
     chatHistory.value.push(['assistant', historyContent])
 
     refreshStats()
   } catch (err) {
-    messages.value.push({ role: 'assistant', content: '抱歉，服务暂时不可用，请稍后再试。' })
+    replyMsg.content = '抱歉，服务暂时不可用，请稍后再试。'
   } finally {
     loading.value = false
     nextTick(() => scrollToBottom())
