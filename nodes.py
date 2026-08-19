@@ -569,7 +569,7 @@ def general_reply(state: dict) -> dict:
 
 
 def evaluate_response(state: dict) -> dict:
-    """副Agent节点：评估并修正主Agent的回答"""
+    """副Agent节点：分维度评估并修正主Agent的回答"""
     user_input = state["user_input"]
     response = state.get("response", "")
     intent = state.get("intent", "general")
@@ -579,7 +579,7 @@ def evaluate_response(state: dict) -> dict:
     # 只评估没有知识库参考的通用回复
     if intent in ("troubleshoot", "human"):
         return {"response": response, "intent": intent}
-    # 有知识库或Chunk参考时，回答有依据，不需要副Agent检查
+    # 有知识库或 Chunk 参考时，回答有依据，不需要副Agent检查
     kb_ref = state.get("kb_reference", "")
     chunk_ref = state.get("chunk_reference", "")
     if kb_ref or chunk_ref:
@@ -591,11 +591,21 @@ def evaluate_response(state: dict) -> dict:
     # 合并参考内容作为评判依据
     all_reference = ""
     if kb_reference:
-        all_reference += "【FAQ参考】\n" + kb_reference + "\n\n"
-    if chunk_reference:
-        all_reference += "【文档片段参考】\n" + chunk_reference
+        all_reference += "【FAQ参考】
+" + kb_reference + "
 
-    eval_prompt = f"""你是 Neowow 智能客服的质量审核员。请检查以下客服回答，如有问题直接修正。
+"
+    if chunk_reference:
+        all_reference += "【文档片段参考】
+" + chunk_reference
+
+    # 评分阈值：低于此分数需要修正
+    ACCURACY_THRESHOLD = 3
+    COMPLETENESS_THRESHOLD = 3
+    TONE_THRESHOLD = 3
+    SAFETY_THRESHOLD = 4  # 安全要求更严格
+
+    eval_prompt = f"""你是 Neowow 智能客服的质量审核员。请对以下客服回答进行分维度评分（1-5分），并决定是否需要修正。
 
 ## 用户问题
 {user_input}
@@ -605,17 +615,19 @@ def evaluate_response(state: dict) -> dict:
 
 {all_reference if all_reference else "（暂无知识库参考）"}
 
-## 检查项
-1. 准确性：回答是否与知识库/产品事实一致，有没有编造不存在的信息
+## 评分标准（1-5分）
+1. 准确性：回答是否与产品事实一致，有没有编造信息
 2. 完整性：是否遗漏了用户问题的关键部分
-3. 语气：是否简洁直接、没有emoji、没有"哈/呢/啦"等语气词
-4. 安全：是否暴露了内部系统信息或给出了错误的操作指引
+3. 语气：是否简洁专业、没有emoji、没有"哈/呢/啦"等语气词
+4. 安全：是否暴露了内部信息或给出了错误操作指引
 
 ## 输出格式
-如果回答完全没问题，只输出：
+先输出各维度分数，然后输出 PASS 或 FIXED：
+SCORES: 准确性=X, 完整性=X, 语气=X, 安全=X
 PASS
 
-如果回答有问题，输出修正后的完整回答（不要解释，直接给修正版）：
+或者（如果有任一维度低于阈值：准确性<3, 完整性<3, 语气<3, 安全<4）：
+SCORES: 准确性=X, 完整性=X, 语气=X, 安全=X
 FIXED: <修正后的完整回答>
 """
 
@@ -636,7 +648,7 @@ FIXED: <修正后的完整回答>
             resp = eval_client.chat.completions.create(
                 model=eval_model,
                 messages=messages,
-                max_tokens=400,
+                max_tokens=500,
                 temperature=0.1,
             )
             reply = resp.choices[0].message.content.strip()
@@ -648,20 +660,41 @@ FIXED: <修正后的完整回答>
     if not reply:
         return state
 
-    # 解析结果
-    if reply.startswith("PASS"):
-        log_step("evaluate", result="PASS", user_input=user_input[:50])
-        print(f"[副Agent] PASS | 问题: {user_input[:30]}...")
-        return state
+    # 解析评分结果
+    import re
+    scores_match = re.search(r'SCORES:\s*准确性=(\d),\s*完整性=(\d),\s*语气=(\d),\s*安全=(\d)', reply)
 
+    if scores_match:
+        accuracy = int(scores_match.group(1))
+        completeness = int(scores_match.group(2))
+        tone = int(scores_match.group(3))
+        safety = int(scores_match.group(4))
+
+        # 判断是否需要修正
+        need_fix = (
+            accuracy < ACCURACY_THRESHOLD or
+            completeness < COMPLETENESS_THRESHOLD or
+            tone < TONE_THRESHOLD or
+            safety < SAFETY_THRESHOLD
+        )
+
+        if not need_fix:
+            log_step("evaluate", result="PASS",
+                     accuracy=accuracy, completeness=completeness,
+                     tone=tone, safety=safety, user_input=user_input[:50])
+            print(f"[副Agent] PASS | 准确性={accuracy} 完整性={completeness} 语气={tone} 安全={safety} | 问题：{user_input[:30]}...")
+            return state
+
+    # 检查是否有 FIXED
     if reply.startswith("FIXED:"):
         fixed = reply[6:].strip()
-        log_step("evaluate", result="FIXED", user_input=user_input[:50], fixed_response=fixed[:100])
-        print(f"[副Agent] FIXED | 问题: {user_input[:30]}...")
-        print(f"[副Agent] 修正: {fixed[:50]}...")
+        log_step("evaluate", result="FIXED", fixed_response=fixed[:100], user_input=user_input[:50])
+        print(f"[副Agent] FIXED | 问题：{user_input[:30]}...")
+        print(f"[副Agent] 修正：{fixed[:50]}...")
         return {"response": fixed, "intent": intent}
 
     # 如果 LLM 没按格式输出，保守起见保留原回答
-    log_step("evaluate", result="UNKNOWN", reply=reply[:100])
-    print(f"[副Agent] 未知格式 | 回答: {reply[:50]}...")
+    log_step("evaluate", result="UNKNOWN", reply=reply[:100], user_input=user_input[:50])
+    print(f"[副Agent] 未知格式 | 回答：{reply[:50]}...")
     return state
+
