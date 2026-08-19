@@ -350,12 +350,6 @@ function closeImagePreview() {
           </div>
         </div>
       </div>
-      <div v-if="loading" class="message assistant">
-        <div class="message-avatar"></div>
-        <div class="message-bubble thinking">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        </div>
-      </div>
     </div>
 
     <!-- 输入区域 -->
