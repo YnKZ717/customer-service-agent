@@ -415,15 +415,22 @@ def _inject_tool_results(solution: str, tool_results: list) -> str:
     import json
     for tool_name, result in tool_results:
         if tool_name == "task_status":
-            status = result.get("status", "未知")
+            status = result.get("status", "未知").upper()
             error = result.get("error_message", "")
-            if status == "failed":
+            platform_error = result.get("platform_error", "")
+
+            if status == "FAILED":
                 solution += f"\n\n【查询结果】您的任务状态为：失败\n【失败原因】{error}"
-            elif status == "processing":
-                progress = result.get("progress", 0)
-                solution += f"\n\n【查询结果】您的任务正在处理中，当前进度：{progress}%"
-            elif status == "completed":
+                if platform_error:
+                    solution += f"\n【平台报错】{platform_error[:100]}"
+            elif status == "PROCESSING":
+                solution += f"\n\n【查询结果】您的任务正在处理中，请耐心等待。"
+            elif status == "SUCCESS":
                 solution += "\n\n【查询结果】您的任务已完成，请查看生成结果。"
+            elif status == "PENDING":
+                solution += "\n\n【查询结果】您的任务正在排队，请耐心等待。"
+            elif status == "NOT_FOUND":
+                solution += f"\n\n【查询结果】{error or '未找到该任务'}"
         elif tool_name == "credits":
             balance = result.get("credits_balance", 0)
             solution += f"\n\n【账户信息】当前积分余额：{balance}"
@@ -591,13 +598,9 @@ def evaluate_response(state: dict) -> dict:
     # 合并参考内容作为评判依据
     all_reference = ""
     if kb_reference:
-        all_reference += "【FAQ参考】
-" + kb_reference + "
-
-"
+        all_reference += "【FAQ参考】\n" + kb_reference + "\n\n"
     if chunk_reference:
-        all_reference += "【文档片段参考】
-" + chunk_reference
+        all_reference += "【文档片段参考】\n" + chunk_reference
 
     # 评分阈值：低于此分数需要修正
     ACCURACY_THRESHOLD = 3

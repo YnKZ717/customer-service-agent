@@ -1,90 +1,127 @@
-"""Mock 工具函数 — 模拟真实 API 调用，用于演示"""
-import random
+"""工具函数 — 查询任务状态（真实API）"""
+import requests
+import json
+import time
 from datetime import datetime
 
 
-# ── 模拟数据库 ─────────────────────────────────────────────
+# ── 真实 API 配置 ─────────────────────────────────────────────
 
-MOCK_TASKS = {
-    "8078e05dfc514a299c7b40d37e61fa0f": {
-        "task_id": "8078e05dfc514a299c7b40d37e61fa0f",
-        "type": "text_to_video",
-        "status": "failed",
-        "error_code": "copyright_restricted",
-        "error_message": "检测到版权敏感元素",
-        "created_at": "2026-08-17 16:20:15",
-        "model": "kling-v2.5",
-        "duration": 5,
-        "resolution": "1080P",
-    },
-    "abcdef1234567890abcdef1234567890": {
-        "task_id": "abcdef1234567890abcdef1234567890",
-        "type": "image_to_video",
-        "status": "processing",
-        "progress": 65,
-        "created_at": "2026-08-17 16:25:30",
-        "model": "dreamina-2.0",
-        "duration": 8,
-        "resolution": "2K",
-    },
-    "1234567890abcdef1234567890abcdef": {
-        "task_id": "1234567890abcdef1234567890abcdef",
-        "type": "text_to_image",
-        "status": "completed",
-        "created_at": "2026-08-17 16:10:00",
-        "model": "neo-nano-pro",
-        "resolution": "2K",
-    },
-}
+CANVAS_NODE_API = "https://dev.neodomain.cn/admin/api/v1/debug/canvas-node"
+API_KEY = "v8dn_7Pr31wvI399PB-BAXOVOsgaksba7BWj7J3QOEM"
 
-MOCK_USER = {
-    "user_id": "test_user_001",
-    "credits_balance": 2850,
-    "member_level": "PLUS",
-    "member_expire": "2026-09-15 23:59:59",
-    "monthly_quota": 50,
-    "monthly_used": 23,
-}
-
-
-# ── 工具函数 ─────────────────────────────────────────────
 
 def check_task_status(task_id: str) -> dict:
     """
-    查询任务状态
-    真实场景：调用 POST /api/tasks/{task_id}/status
+    查询任务状态（真实API）
+    调用 canvas-node 接口，返回任务状态、错误信息、生成详情
 
     返回:
     {
         "task_id": str,
-        "status": "processing" | "completed" | "failed" | "pending",
-        "progress": int,  # 0-100
+        "status": "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "not_found",
         "error_code": str | None,
-        "error_message": str | None,
-        "type": str,
-        "model": str,
-        "duration": int,
-        "resolution": str,
-        "created_at": str,
+        "error_message": str | None,  # 中文，给用户看的
+        "platform_error": str | None,  # 英文，平台原始报错
+        "model": str | None,
+        "model_code": str | None,
+        "consume_points": int | None,
+        "resolution": str | None,
+        "duration": int | None,
+        "task_type": str | None,
+        "created_at": str | None,
+        "completed_at": str | None,
     }
     """
     print(f"[TOOL] check_task_status(task_id='{task_id}')")
 
-    # 模拟网络延迟
-    import time
-    time.sleep(0.3)
+    try:
+        resp = requests.get(
+            CANVAS_NODE_API,
+            params={"taskId": task_id},
+            headers={"X-API-Key": API_KEY},
+            timeout=20
+        )
+        body = resp.json()
 
-    if task_id in MOCK_TASKS:
-        result = MOCK_TASKS[task_id]
-        print(f"[TOOL]   → status={result['status']}, error={result.get('error_code')}")
+        if not body.get("success"):
+            print(f"[TOOL]   → API ERROR: {body.get('errCode')}: {body.get('errMessage')}")
+            return {
+                "task_id": task_id,
+                "status": "error",
+                "error_code": body.get("errCode"),
+                "error_message": body.get("errMessage", "查询失败"),
+            }
+
+        data = body.get("data", {})
+        nodes = data.get("nodes", [])
+        generations = data.get("generations", [])
+        dispatch_tasks = data.get("dispatchTasks", [])
+
+        # 没有数据
+        if not nodes:
+            print(f"[TOOL]   → NOT_FOUND")
+            return {
+                "task_id": task_id,
+                "status": "not_found",
+                "error_message": "未找到该任务，请检查 TaskID 是否正确",
+            }
+
+        # 取第一个节点（最新）
+        node = nodes[0]
+        status = node.get("status", "UNKNOWN")
+
+        # 从调度任务取平台原始报错（最关键）
+        platform_error = None
+        platform_error_code = None
+        model_code = None
+        if dispatch_tasks:
+            dt = dispatch_tasks[0]
+            platform_error = dt.get("errorMsg")
+            platform_error_code = dt.get("errorCode")
+            model_code = dt.get("modelCode")
+
+        # 从生成记录取业务信息
+        model = None
+        consume_points = None
+        resolution = None
+        if generations:
+            gen = generations[0]
+            model = gen.get("model")
+            consume_points = gen.get("consumePoints")
+            resolution = gen.get("resolution")
+
+        result = {
+            "task_id": task_id,
+            "status": status,
+            "error_code": platform_error_code,
+            "error_message": node.get("errorMessage"),  # 中文用户提示
+            "platform_error": platform_error,  # 英文原始报错
+            "model": model or model_code,
+            "model_code": model_code,
+            "consume_points": consume_points,
+            "resolution": resolution,
+            "task_type": node.get("taskType"),
+            "created_at": node.get("createTime"),
+            "completed_at": node.get("updateTime"),
+        }
+
+        print(f"[TOOL]   → status={status}, error={platform_error_code}")
         return result
-    else:
-        print(f"[TOOL]   → NOT_FOUND")
+
+    except requests.Timeout:
+        print(f"[TOOL]   → TIMEOUT")
         return {
             "task_id": task_id,
-            "status": "not_found",
-            "error_code": "task_not_found",
-            "error_message": "未找到该任务",
+            "status": "error",
+            "error_message": "查询超时，请稍后再试",
+        }
+    except Exception as e:
+        print(f"[TOOL]   → EXCEPTION: {str(e)[:50]}")
+        return {
+            "task_id": task_id,
+            "status": "error",
+            "error_message": f"查询异常：{str(e)[:50]}",
         }
 
 
