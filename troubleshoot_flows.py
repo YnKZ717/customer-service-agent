@@ -298,6 +298,232 @@ TROUBLESHOOT_FLOWS = {
             ),
         },
     },
+
+    "upscale_fail": {
+        "name": "超分辨率失败",
+        "triggers": ["超分失败", "超清失败", "放大失败", "分辨率提升失败",
+                     "超分报错", "放大报错", "超分辨率失败", "upscal失败"],
+        "kb_categories": ["upscale", "video_generation", "image_generation"],
+        "max_steps": 2,
+        "steps": [
+            {
+                "id": "step0",
+                "question": "请问超分的是图片还是视频？有报错提示吗？可以把错误信息或截图发给我。",
+                "branches": [
+                    {"keywords": ["视频", "video"], "next": "solve_video_upscale"},
+                    {"keywords": ["图片", "image", "照片"], "next": "solve_image_upscale"},
+                    {"keywords": ["版权", "限制", "copyright"], "next": "solve_upscale_copyright"},
+                ],
+                "default_next": "step1",
+            },
+            {
+                "id": "step1",
+                "question": "了解。请提供 TaskID，点击「转人工客服」提交工单，客服会帮你排查超分失败的原因。",
+                "branches": [],
+                "default_next": "done",
+            },
+        ],
+        "solutions": {
+            "solve_video_upscale": (
+                "视频超分辨率失败可能原因：\n"
+                "1. 视频时长过长（建议不超过30秒）\n"
+                "2. 分辨率过高（4K以上处理时间较长）\n"
+                "3. 服务器队列拥堵\n"
+                "4. 涉及版权内容被拦截\n"
+                "建议：缩短视频时长或降低目标分辨率后重试。如反复失败，请点击「转人工客服」提交 TaskID 排查。"
+            ),
+            "solve_image_upscale": (
+                "图片超分辨率失败可能原因：\n"
+                "1. 图片尺寸过小（建议不低于512x512）\n"
+                "2. 图片格式不支持（支持 JPG/PNG/WEBP）\n"
+                "3. 图片涉及版权内容被拦截\n"
+                "建议：检查图片格式和尺寸后重试。如确认合规仍失败，请点击「转人工客服」提交 TaskID 申请核查。"
+            ),
+            "solve_upscale_copyright": (
+                "超分辨率也有版权检测。如果原图/视频涉及版权内容（知名IP、品牌logo等），会被火山引擎统一拦截。\n"
+                "建议：\n"
+                "1. 使用原创内容或已获得授权的内容\n"
+                "2. 如确认不侵权，点击「转人工客服」提交 TaskID 申请豁免"
+            ),
+        },
+    },
+
+    "payment_fail": {
+        "name": "支付失败",
+        "triggers": ["支付失败", "充值失败", "付款失败", "扣款失败",
+                     "支付报错", "充值报错", "付不了款", "无法支付"],
+        "kb_categories": ["billing", "payment", "account"],
+        "max_steps": 2,
+        "steps": [
+            {
+                "id": "step0",
+                "question": "请问用的什么支付方式？（支付宝/微信/银行卡/礼品卡）有报错提示吗？",
+                "branches": [
+                    {"keywords": ["支付宝", "alipay"], "next": "solve_alipay"},
+                    {"keywords": ["微信", "wechat"], "next": "solve_wechat"},
+                    {"keywords": ["银行卡", "信用卡", "card"], "next": "solve_card"},
+                    {"keywords": ["礼品卡", "gift"], "next": "solve_gift_card"},
+                ],
+                "default_next": "step1",
+            },
+            {
+                "id": "step1",
+                "question": "了解。支付问题需要客服在后台核实，请点击「转人工客服」提交工单，客服会尽快帮你处理。",
+                "branches": [],
+                "default_next": "done",
+            },
+        ],
+        "solutions": {
+            "solve_alipay": (
+                "支付宝支付失败可能原因：\n"
+                "1. 账户余额不足\n"
+                "2. 支付限额\n"
+                "3. 网络问题\n"
+                "4. 支付宝风控拦截\n"
+                "建议：检查账户余额后重试，或换用微信支付。如反复失败，请点击「转人工客服」联系处理。"
+            ),
+            "solve_wechat": (
+                "微信支付失败可能原因：\n"
+                "1. 微信账户异常\n"
+                "2. 支付限额\n"
+                "3. 网络问题\n"
+                "建议：检查微信账户状态后重试，或换用支付宝。如反复失败，请点击「转人工客服」联系处理。"
+            ),
+            "solve_card": (
+                "银行卡/信用卡支付失败可能原因：\n"
+                "1. 卡内余额不足\n"
+                "2. 银行风控拦截\n"
+                "3. 卡片过期\n"
+                "4. 不支持该卡类型\n"
+                "建议：联系银行确认卡片状态，或换用支付宝/微信支付。如确认卡片正常仍失败，请点击「转人工客服」联系处理。"
+            ),
+            "solve_gift_card": (
+                "礼品卡兑换失败可能原因：\n"
+                "1. 卡密错误（注意区分大小写）\n"
+                "2. 礼品卡已过期\n"
+                "3. 礼品卡已被使用\n"
+                "4. 礼品卡渠道不符（如平台限定卡）\n"
+                "建议：核对卡密后重试。如确认卡密无误仍失败，请点击「转人工客服」提交卡密信息核查。"
+            ),
+        },
+    },
+
+    "skill_sync_fail": {
+        "name": "技能同步失败",
+        "triggers": ["技能同步失败", "技能同步不了", "技能更新失败",
+                     "技能报错", "技能用不了", "技能加载失败"],
+        "kb_categories": ["skill", "market"],
+        "max_steps": 2,
+        "steps": [
+            {
+                "id": "step0",
+                "question": "请问是市场下载的技能还是自己上传的技能？有报错提示吗？",
+                "branches": [
+                    {"keywords": ["市场", "下载", "install"], "next": "solve_market_skill"},
+                    {"keywords": ["上传", "自己", "custom"], "next": "solve_custom_skill"},
+                ],
+                "default_next": "step1",
+            },
+            {
+                "id": "step1",
+                "question": "了解。技能问题需要客服在后台核实，请点击「转人工客服」提交工单，客服会尽快帮你处理。",
+                "branches": [],
+                "default_next": "done",
+            },
+        ],
+        "solutions": {
+            "solve_market_skill": (
+                "市场技能同步失败可能原因：\n"
+                "1. 网络问题（技能文件较大）\n"
+                "2. 技能版本与平台不兼容\n"
+                "3. 技能已被作者下架\n"
+                "4. 存储空间不足\n"
+                "建议：检查网络后重试，或清除缓存后重新下载。如反复失败，请点击「转人工客服」提交技能名称和报错截图。"
+            ),
+            "solve_custom_skill": (
+                "自己上传的技能同步失败可能原因：\n"
+                "1. 技能文件格式错误\n"
+                "2. 技能代码有语法错误\n"
+                "3. 依赖库缺失\n"
+                "4. 权限配置问题\n"
+                "建议：检查技能文件格式和代码逻辑，参考官方技能开发文档。如确认代码无误仍失败，请点击「转人工客服」提交技能文件排查。"
+            ),
+        },
+    },
+
+    "canvas_crash": {
+        "name": "画布崩溃",
+        "triggers": ["画布崩溃", "画布卡死", "画布闪退", "项目崩溃",
+                     "画布报错", "项目报错", "打不开画布", "画布加载失败"],
+        "kb_categories": ["canvas", "project", "bug"],
+        "max_steps": 3,
+        "steps": [
+            {
+                "id": "step0",
+                "question": "请问是打开画布时崩溃还是编辑过程中崩溃？有报错提示吗？",
+                "branches": [
+                    {"keywords": ["打开", "加载", "启动"], "next": "solve_canvas_load"},
+                    {"keywords": ["编辑", "保存", "操作"], "next": "solve_canvas_edit"},
+                ],
+                "default_next": "step1",
+            },
+            {
+                "id": "step1",
+                "question": "请问用的是什么浏览器？可以尝试清理浏览器缓存后重试。",
+                "branches": [
+                    {"keywords": ["chrome", "谷歌"], "next": "solve_chrome"},
+                    {"keywords": ["edge", "微软"], "next": "solve_edge"},
+                ],
+                "default_next": "step2",
+            },
+            {
+                "id": "step2",
+                "question": "了解。画布崩溃问题需要客服在后台核实，请点击「转人工客服」提交工单，客服会尽快帮你处理。",
+                "branches": [],
+                "default_next": "done",
+            },
+        ],
+        "solutions": {
+            "solve_canvas_load": (
+                "打开画布时崩溃可能原因：\n"
+                "1. 浏览器缓存问题\n"
+                "2. 项目文件损坏\n"
+                "3. 浏览器版本过旧\n"
+                "建议：\n"
+                "1. 清理浏览器缓存（Ctrl+Shift+Delete）\n"
+                "2. 更新浏览器到最新版本\n"
+                "3. 尝试用 Chrome 浏览器打开\n"
+                "如仍崩溃，请点击「转人工客服」提交项目 ID 排查。"
+            ),
+            "solve_canvas_edit": (
+                "编辑过程中崩溃可能原因：\n"
+                "1. 项目元素过多（建议不超过100个）\n"
+                "2. 内存不足\n"
+                "3. 浏览器插件冲突\n"
+                "建议：\n"
+                "1. 关闭其他占用内存的程序\n"
+                "2. 禁用浏览器插件后重试\n"
+                "3. 定期保存项目（Ctrl+S）\n"
+                "如反复崩溃，请点击「转人工客服」提交项目 ID 和浏览器信息。"
+            ),
+            "solve_chrome": (
+                "Chrome 浏览器崩溃建议：\n"
+                "1. 更新到最新版本（设置 → 关于 Chrome）\n"
+                "2. 清理缓存（Ctrl+Shift+Delete → 选择全部时间）\n"
+                "3. 禁用硬件加速（设置 → 系统 → 关闭硬件加速）\n"
+                "4. 尝试无痕模式（Ctrl+Shift+N）\n"
+                "如仍崩溃，请点击「转人工客服」提交 Chrome 版本号和报错截图。"
+            ),
+            "solve_edge": (
+                "Edge 浏览器崩溃建议：\n"
+                "1. 更新到最新版本（设置 → 关于 Microsoft Edge）\n"
+                "2. 清理缓存（Ctrl+Shift+Delete）\n"
+                "3. 尝试切换浏览器引擎（设置 → 默认浏览器 → 允许在 Internet Explorer 模式下重新加载）\n"
+                "4. 尝试用 Chrome 浏览器打开\n"
+                "如仍崩溃，请点击「转人工客服」提交 Edge 版本号和报错截图。"
+            ),
+        },
+    },
 }
 
 

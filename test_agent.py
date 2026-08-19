@@ -170,6 +170,36 @@ TEST_CASES = [
         "description": "应进入账号积分排查流程",
     },
 
+    # === 新增排查流程测试 ===
+    {
+        "id": "troubleshoot_6",
+        "question": "超分失败了",
+        "expected_troubleshoot": True,
+        "expected_keywords": ["超分", "视频", "图片"],
+        "description": "应进入超分辨率失败排查流程",
+    },
+    {
+        "id": "troubleshoot_7",
+        "question": "支付失败了",
+        "expected_troubleshoot": True,
+        "expected_keywords": ["支付", "支付宝", "微信"],
+        "description": "应进入支付失败排查流程",
+    },
+    {
+        "id": "troubleshoot_8",
+        "question": "技能同步不了",
+        "expected_troubleshoot": True,
+        "expected_keywords": ["技能", "市场", "上传"],
+        "description": "应进入技能同步失败排查流程",
+    },
+    {
+        "id": "troubleshoot_9",
+        "question": "画布崩溃了",
+        "expected_troubleshoot": True,
+        "expected_keywords": ["画布", "浏览器", "缓存"],
+        "description": "应进入画布崩溃排查流程",
+    },
+
     # === 多轮排查测试 ===
     {
         "id": "multi_turn_1",
