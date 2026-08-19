@@ -24,3 +24,6 @@ frontend/dist/
 
 # 日志
 backend/logs/
+logs/
+test_report_*.txt
+fix_agent.py

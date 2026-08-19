@@ -148,18 +148,18 @@ def classify_intent(state: dict) -> dict:
 
     # 如果已经预设了 intent（如多轮排查恢复），直接使用
     if state.get("intent"):
-        return {"intent": state["intent"], "user_input": user_input}
+        return {"intent": state["intent"], "user_input": user_input, "user_memory": state.get("user_memory", {})}
 
     # 优先检查是否匹配排查流程（在常规关键词之前）
     if match_flow(user_input):
-        return {"intent": "troubleshoot", "user_input": user_input}
+        return {"intent": "troubleshoot", "user_input": user_input, "user_memory": state.get("user_memory", {})}
 
     for intent, keywords in INTENT_KEYWORDS.items():
         if any(k in user_input for k in keywords):
-            return {"intent": intent, "user_input": user_input}
+            return {"intent": intent, "user_input": user_input, "user_memory": state.get("user_memory", {})}
 
     # 没匹配到任何关键词 → 通用问题
-    return {"intent": "general", "user_input": user_input}
+    return {"intent": "general", "user_input": user_input, "user_memory": state.get("user_memory", {})}
 
 
 def answer_from_kb(state: dict) -> dict:
@@ -167,7 +167,7 @@ def answer_from_kb(state: dict) -> dict:
     query = state.get("user_input", "")
 
     if not query or not isinstance(query, str):
-        return {"kb_found": False, "intent": state.get("intent", "general"), "kb_reference": ""}
+        return {"kb_found": False, "intent": state.get("intent", "general"), "kb_reference": "", "user_memory": state.get("user_memory", {})}
 
     # 查知识库，获取精确匹配和相关参考（返回4值：question, answer, reference, images）
     question, answer, reference, images = search_knowledge_base(query, threshold=0.65, return_reference=True)
@@ -179,6 +179,7 @@ def answer_from_kb(state: dict) -> dict:
             "intent": state["intent"],
             "user_input": state["user_input"],
             "kb_reference": reference,  # 传给大模型作为参考
+            "user_memory": state.get("user_memory", {}),
         }
 
     result = {
@@ -187,6 +188,7 @@ def answer_from_kb(state: dict) -> dict:
         "kb_category": question or "未匹配",
         "kb_found": True,
         "kb_reference": "",
+        "user_memory": state.get("user_memory", {}),
     }
     if images:
         result["kb_images"] = images
@@ -202,7 +204,7 @@ def chunk_search_node(state: dict) -> dict:
     query = state.get("user_input", "")
 
     if not query or not isinstance(query, str):
-        return {"chunk_found": False, "intent": state.get("intent", "general"), "chunk_reference": ""}
+        return {"chunk_found": False, "intent": state.get("intent", "general"), "chunk_reference": "", "user_memory": state.get("user_memory", {})}
 
     # 搜索chunk片段
     chunks = search_chunks(query, top_k=2, threshold=0.5)
@@ -214,12 +216,14 @@ def chunk_search_node(state: dict) -> dict:
             "chunk_found": True,
             "chunk_reference": chunk_text,
             "intent": state["intent"],
+            "user_memory": state.get("user_memory", {}),
         }
     else:
         return {
             "chunk_found": False,
             "chunk_reference": "",
             "intent": state["intent"],
+            "user_memory": state.get("user_memory", {}),
         }
 
 
@@ -233,6 +237,7 @@ def handle_human(state: dict) -> dict:
         "response": t("ticket_created", ticket_id=ticket['ticket_id']),
         "ticket_id": ticket['ticket_id'],
         "intent": state["intent"],
+        "user_memory": state.get("user_memory", {}),
     }
 
 
@@ -259,14 +264,24 @@ def troubleshoot(state: dict) -> dict:
 
     if not flow_id:
         log_error("flow_match", "无法匹配排查流程", {"user_input": user_input[:50]})
-        return {"response": "请问具体遇到了什么问题？可以描述一下现象或发截图，我帮你排查。", "intent": "troubleshoot"}
+        user_memory = _update_memory(state)
+        return {
+            "response": "请问具体遇到了什么问题？可以描述一下现象或发截图，我帮你排查。",
+            "intent": "troubleshoot",
+            "user_memory": user_memory,
+        }
 
     log_flow_start(flow_id, user_input)
 
     flow = get_flow(flow_id)
     if not flow:
         log_error("flow_not_found", f"流程 {flow_id} 不存在")
-        return {"response": "暂时无法处理这个问题，请点击「转人工客服」联系处理。", "intent": "troubleshoot"}
+        user_memory = _update_memory(state)
+        return {
+            "response": "暂时无法处理这个问题，请点击「转人工客服」联系处理。",
+            "intent": "troubleshoot",
+            "user_memory": user_memory,
+        }
 
     # ── 2. 查知识库注入上下文 ──
     kb_context = get_kb_context(flow, FAQ_DATA)
@@ -295,6 +310,72 @@ def troubleshoot(state: dict) -> dict:
         log_tool_call("check_member_status", {}, member_result)
         tool_results.append(("member", member_result))
 
+    # ── 3.5 更新多轮记忆 ──
+    user_memory = _update_memory(state)
+
+    # ─ 3.6 首轮有 TaskID 时，跳过 step0 直接返回查询结果 ──
+    if not prev_flow and tool_results:
+        # 查找任务状态查询结果
+        task_result = None
+        for tool_name, result in tool_results:
+            if tool_name == "task_status":
+                task_result = result
+                break
+
+        if task_result:
+            status = task_result.get("status", "").upper()
+            error = task_result.get("error_message", "")
+            platform_error = task_result.get("platform_error", "")
+
+            # 任务不存在
+            if status == "NOT_FOUND":
+                log_response(0, f"任务不存在: {task_result.get('task_id')}")
+                return {
+                    "response": f"【查询结果】{error or '未找到该任务，请检查 TaskID 是否正确'}",
+                    "intent": "troubleshoot",
+                    "troubleshoot_flow": "",
+                    "troubleshoot_step": 0,
+                    "user_memory": user_memory,
+                }
+
+            # 任务失败 — 直接给出失败原因
+            if status == "FAILED":
+                response = f"【查询结果】您的任务状态为：失败\n【失败原因】{error}"
+                if platform_error:
+                    response += f"\n【平台报错】{platform_error[:100]}"
+                response += "\n\n请根据以上信息检查并修改后重试。如仍有问题，请点击「转人工客服」提交工单。"
+                log_response(0, f"任务失败: {task_result.get('task_id')}")
+                return {
+                    "response": response,
+                    "intent": "troubleshoot",
+                    "troubleshoot_flow": "",
+                    "troubleshoot_step": 0,
+                    "user_memory": user_memory,
+                }
+
+            # 任务处理中/排队中
+            if status in ("PROCESSING", "PENDING"):
+                status_text = "处理中" if status == "PROCESSING" else "排队中"
+                log_response(0, f"任务{status_text}: {task_result.get('task_id')}")
+                return {
+                    "response": f"【查询结果】您的任务正在{status_text}，请耐心等待。",
+                    "intent": "troubleshoot",
+                    "troubleshoot_flow": "",
+                    "troubleshoot_step": 0,
+                    "user_memory": user_memory,
+                }
+
+            # 任务成功
+            if status == "SUCCESS":
+                log_response(0, f"任务成功: {task_result.get('task_id')}")
+                return {
+                    "response": "【查询结果】您的任务已完成，请查看生成结果。",
+                    "intent": "troubleshoot",
+                    "troubleshoot_flow": "",
+                    "troubleshoot_step": 0,
+                    "user_memory": user_memory,
+                }
+
     # ─ 4. 确定当前步骤 ──
     if not prev_flow:
         # 首轮：直接问第一步
@@ -321,6 +402,7 @@ def troubleshoot(state: dict) -> dict:
                 "intent": "troubleshoot",
                 "troubleshoot_flow": flow_id,
                 "troubleshoot_step": flow["max_steps"],
+                "user_memory": user_memory,
             }
         elif next_id in flow.get("solutions", {}):
             # 匹配到解决方案
@@ -338,6 +420,7 @@ def troubleshoot(state: dict) -> dict:
                 "intent": "troubleshoot",
                 "troubleshoot_flow": flow_id,
                 "troubleshoot_step": prev_step_idx + 1,
+                "user_memory": user_memory,
             }
             if is_final:
                 result["response"] += "\n\n如以上方法未能解决，请点击「转人工客服」提交工单，附上 TaskID，客服会帮你处理。"
@@ -347,7 +430,7 @@ def troubleshoot(state: dict) -> dict:
             current_step = get_step(flow, next_id)
             current_step_idx = prev_step_idx + 1
 
-    # ── 5. 构建 LLM prompt（带决策树约束 + 工具结果）──
+    # ── 5. 构建 LLM prompt（带决策树约束 + 工具结果 + 用户记忆）──
     flow_structure = _format_flow_structure(flow)
 
     # 构建工具结果上下文
@@ -357,6 +440,9 @@ def troubleshoot(state: dict) -> dict:
         for tool_name, tool_result in tool_results:
             tool_context += f"- {tool_name}: {json.dumps(tool_result, ensure_ascii=False)}\n"
 
+    # 构建用户记忆上下文
+    memory_context = _format_user_memory(user_memory)
+
     troubleshoot_prompt = f"""你是 Neowow 平台的技术支持，正在通过结构化流程引导用户排查问题。
 
 ## 当前排查流程
@@ -364,8 +450,7 @@ def troubleshoot(state: dict) -> dict:
 
 ## 知识库参考（与当前问题相关的FAQ）
 {kb_context if kb_context else "（暂无相关FAQ）"}
-{tool_context}
-
+{tool_context}{memory_context}
 ## 回答规则
 - 简洁、直接、有条理，用编号或分点说明
 - 不要加emoji，不要用"哈""呢""啦"等语气词
@@ -373,6 +458,7 @@ def troubleshoot(state: dict) -> dict:
 - 当前应该问的问题是："{current_step['question'] if current_step else '建议转人工客服'}"
 - 根据用户回答判断下一步，严格按照流程走
 - 如果已查询到任务状态/积分/会员信息，在回答中引用这些数据
+- 如果用户记忆中已有 TaskID，后续不需要再问
 - 如果问题已解决，给出解决方案
 - 如果排查步数已达上限({flow['max_steps']}步)，主动建议点击「转人工客服」提交工单"""
 
@@ -394,6 +480,7 @@ def troubleshoot(state: dict) -> dict:
         "intent": "troubleshoot",
         "troubleshoot_flow": flow_id,
         "troubleshoot_step": current_step_idx,
+        "user_memory": user_memory,
     }
 
 
@@ -402,12 +489,94 @@ def _extract_info_from_input(text: str) -> dict:
     import re
     info = {}
 
-    # 提取 TaskID（32位十六进制）
+    # 提取 TaskID — 支持多种格式：
+    # 1. 32位十六进制（如：000465cf4f9545bfa47ba66ee5e2544b）
     task_match = re.search(r'[a-f0-9]{32}', text.lower())
     if task_match:
         info["task_id"] = task_match.group(0)
+    else:
+        # 2. 带前缀的 TaskID（如：TaskID: xxx、任务ID：xxx）
+        task_match = re.search(r'(?:TaskID|任务ID|task\s*id)[：:\s]+([A-Za-z0-9_\-]+)', text, re.IGNORECASE)
+        if task_match:
+            info["task_id"] = task_match.group(1)
+        else:
+            # 3. 末尾的独立 ID（如：视频生成失败了 NOT_EXIST）
+            # 匹配末尾的非中文字符序列（长度>=4，排除纯标点和短词）
+            task_match = re.search(r'[\s，。！？,!\?]*([A-Za-z][A-Za-z0-9_]{3,}|[0-9]{8,})$', text)
+            if task_match:
+                info["task_id"] = task_match.group(1)
 
     return info
+
+
+# ── 多轮记忆相关函数 ──────────────────────────────────────
+
+def _extract_user_memory(text: str, current_memory: dict) -> dict:
+    """
+    从用户输入中提取需要跨轮次记住的信息
+
+    记住的信息包括：
+    - task_id: TaskID（跨轮次复用，不用重复问）
+    - member_level: 会员等级（结合权益回答）
+    - member_days: 会员剩余天数
+    - problem_type: 问题类型（如 video_fail、image_fail 等）
+    - troubleshooting: 是否正在排查中
+    """
+    import re
+    memory = current_memory.copy() if current_memory else {}
+
+    # 提取 TaskID
+    info = _extract_info_from_input(text)
+    if info.get("task_id"):
+        memory["task_id"] = info["task_id"]
+
+    # 提取会员等级声明
+    member_match = re.search(r'(?:我是|我的|我用的)\s*(?:[是|的])?\s*(\S+)(?:会员|VIP|plus|Plus|PLUS|pro|Pro|PRO)', text)
+    if member_match:
+        memory["member_level"] = member_match.group(1).upper()
+    elif re.search(r'(?:PLUS|plus|Pro|pro|PRO|标准|基础|高级)会员', text):
+        # 提取会员类型
+        for level in ["PLUS", "PRO", "标准", "基础", "高级"]:
+            if level.lower() in text.lower():
+                memory["member_level"] = level
+                break
+
+    # 提取问题类型（从排查流程匹配）
+    from troubleshoot_flows import match_flow
+    flow_id = match_flow(text)
+    if flow_id:
+        memory["problem_type"] = flow_id
+        memory["troubleshooting"] = True
+
+    return memory
+
+
+def _update_memory(state: dict) -> dict:
+    """更新用户记忆"""
+    current_memory = state.get("user_memory", {})
+    user_input = state.get("user_input", "")
+    return _extract_user_memory(user_input, current_memory)
+
+
+def _format_user_memory(memory: dict) -> str:
+    """将用户记忆格式化为 LLM 可读的文本"""
+    if not memory:
+        return ""
+
+    parts = []
+    if memory.get("task_id"):
+        parts.append(f"- TaskID: {memory['task_id']}")
+    if memory.get("member_level"):
+        parts.append(f"- 会员等级: {memory['member_level']}")
+    if memory.get("problem_type"):
+        parts.append(f"- 问题类型: {memory['problem_type']}")
+    if memory.get("troubleshooting"):
+        parts.append("- 当前正在排查流程中")
+
+    if not parts:
+        return ""
+
+    return "\n## 用户记忆（跨轮次信息）\n" + "\n".join(parts) + "\n"
 
 
 def _inject_tool_results(solution: str, tool_results: list) -> str:
@@ -506,6 +675,10 @@ def general_reply(state: dict) -> dict:
     kb_reference = state.get("kb_reference", "")
     chunk_reference = state.get("chunk_reference", "")
 
+    # ─ 更新多轮记忆 ──
+    user_memory = _update_memory(state)
+    memory_context = _format_user_memory(user_memory)
+
     # 合并参考内容
     all_reference = ""
     if kb_reference:
@@ -513,8 +686,10 @@ def general_reply(state: dict) -> dict:
     if chunk_reference:
         all_reference += "【文档片段参考】\n" + chunk_reference
 
-    # 组装三层 system prompt
+    # 组装三层 system prompt（加入用户记忆）
     system_prompt = build_system_prompt(history, all_reference if all_reference else None)
+    if memory_context:
+        system_prompt += "\n\n" + memory_context
 
     # 构建消息
     messages = [{"role": "system", "content": system_prompt}]
@@ -572,7 +747,7 @@ def general_reply(state: dict) -> dict:
     log_step("general_reply", user_input=user_input[:50], response=reply[:100], intent="general")
     print(f"[主Agent] general_reply | 问题：{user_input[:30]}...")
     print(f"[主Agent] 回答：{reply[:50]}...")
-    return {"response": reply, "intent": "general"}
+    return {"response": reply, "intent": "general", "user_memory": user_memory}
 
 
 def evaluate_response(state: dict) -> dict:
@@ -585,12 +760,12 @@ def evaluate_response(state: dict) -> dict:
 
     # 只评估没有知识库参考的通用回复
     if intent in ("troubleshoot", "human"):
-        return {"response": response, "intent": intent}
+        return {"response": response, "intent": intent, "user_memory": state.get("user_memory", {})}
     # 有知识库或 Chunk 参考时，回答有依据，不需要副Agent检查
     kb_ref = state.get("kb_reference", "")
     chunk_ref = state.get("chunk_reference", "")
     if kb_ref or chunk_ref:
-        return {"response": response, "intent": intent}
+        return {"response": response, "intent": intent, "user_memory": state.get("user_memory", {})}
 
     if not response:
         return state
@@ -694,7 +869,7 @@ FIXED: <修正后的完整回答>
         log_step("evaluate", result="FIXED", fixed_response=fixed[:100], user_input=user_input[:50])
         print(f"[副Agent] FIXED | 问题：{user_input[:30]}...")
         print(f"[副Agent] 修正：{fixed[:50]}...")
-        return {"response": fixed, "intent": intent}
+        return {"response": fixed, "intent": intent, "user_memory": state.get("user_memory", {})}
 
     # 如果 LLM 没按格式输出，保守起见保留原回答
     log_step("evaluate", result="UNKNOWN", reply=reply[:100], user_input=user_input[:50])

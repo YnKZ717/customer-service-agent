@@ -496,5 +496,455 @@
     "auto_approved": true,
     "priority": "normal",
     "approved_at": "2026-08-17 14:24"
+  },
+  {
+    "question": "怎么使用智能体",
+    "answer": "在平台导航点击「智能体」，创建或选择智能体、配置任务参数并确认积分充足后启动运行，完成后在结果页查看输出。",
+    "original_answer": "在平台导航中点击「智能体」即可进入智能体功能界面。智能体是平台的核心服务模块，主要提供以下能力：\n\n1. 云端服务器：用于运行和管理智能体任务\n2. CodingPlan 套餐订阅：可按需订阅套餐，享受对应服务\n3. 积分计量：使用智能体时会消耗积分，可在账户中心查看余额和消耗记录\n4. 桌面客户端下载：支持下载桌面端使用，方便操作\n\n具体操作步骤：\n- 进入智能体界面后，根据提示创建或选择已有的智能体\n- 配置任务参数，确认积分余额充足后启动运行\n- 任务完成后，可在结果页查看输出内容\n\n如果对某个具体功能有疑问，可以告诉我你遇到的问题，我帮你进一步解答。",
+    "count": 1,
+    "first_asked": "2026-08-17 16:34",
+    "last_asked": "2026-08-17 16:34",
+    "history": [
+      [
+        "user",
+        "怎么充值积分"
+      ],
+      [
+        "assistant",
+        "充值方式：1. 支付宝/微信支付/银行卡：汇率为1积分=¥0.01（即1000积分=¥10）2. 礼品卡兑换：礼品卡享8折优惠。充值档位有1000、5000、10000、30000、50000、100000积分可选。充值后积分即时到账。可在账户中心查看充值记录和积分余额。"
+      ]
+    ],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "CodingPlan是什么",
+    "answer": "CodingPlan并非Neowow平台的功能或术语，知识库无相关信息，建议确认来源或描述具体场景。",
+    "original_answer": "“CodingPlan” 并不是 Neowow 平台的功能或术语。目前知识库中没有相关信息，我暂时无法确认它具体指什么。\n\n如果你是在某个文档、教程或第三方工具中看到这个词，建议你确认一下来源。如果是与 Neowow 相关的使用问题，可以描述具体场景，我帮你进一步排查。",
+    "count": 2,
+    "first_asked": "2026-08-17 17:07",
+    "last_asked": "2026-08-17 17:18",
+    "history": [],
+    "status": "approved",
+    "sensitive": false,
+    "auto_approved": true,
+    "priority": "normal",
+    "approved_at": "2026-08-17 17:18"
+  },
+  {
+    "question": "怎么申请退款",
+    "answer": "点击页面右下角「转人工客服」提交退款工单，附上账号、订单号和退款原因，客服核实后按政策处理。",
+    "original_answer": "关于退款申请，请您按以下步骤操作：\n\n1. 点击页面右下角的「转人工客服」按钮，提交退款申请工单\n2. 在工单中附上您的账号信息、充值订单号（如有）、以及需要退款的具体原因\n3. 人工客服会核实您的使用情况后，按平台退款政策为您处理\n\n提醒：涉及款项操作，请务必通过官方客服渠道提交，不要向任何非官方渠道提供账号和支付信息。",
+    "count": 2,
+    "first_asked": "2026-08-17 17:08",
+    "last_asked": "2026-08-17 17:18",
+    "history": [],
+    "status": "approved",
+    "sensitive": true,
+    "auto_approved": true,
+    "priority": "high",
+    "reason": "包含敏感词，建议人工审核",
+    "approved_at": "2026-08-17 17:18"
+  },
+  {
+    "question": "如何上传自定义技能",
+    "answer": "进入「技能市场」点击「发布技能」，上传技能文件并填写信息后确认发布即可。",
+    "original_answer": "要上传自定义技能到技能市场，可以按以下步骤操作：\n\n1. 进入「技能市场」页面\n2. 点击右上角的「发布技能」按钮\n3. 从本地上传你编写好的技能文件\n4. 填写技能的相关信息（如名称、说明等）\n5. 确认发布\n\n发布后，技能会出现在技能市场中，其他用户也可以浏览、订阅或复制你的技能。\n\n如果你在发布过程中遇到具体问题（比如格式要求或上传失败），可以提供更详细的描述，我可以进一步帮你排查。",
+    "count": 2,
+    "first_asked": "2026-08-17 17:08",
+    "last_asked": "2026-08-17 17:18",
+    "history": [],
+    "status": "approved",
+    "sensitive": false,
+    "auto_approved": true,
+    "priority": "normal",
+    "approved_at": "2026-08-17 17:18"
+  },
+  {
+    "question": "你好",
+    "answer": "你好，我是Neowow Studio智能客服，可解答平台功能、操作指南或常见问题。",
+    "original_answer": "你好，我是 Neowow Studio 的智能客服助手。请问有什么可以帮你的？例如平台功能、操作指南或常见问题都可以问我。",
+    "count": 2,
+    "first_asked": "2026-08-17 17:08",
+    "last_asked": "2026-08-17 17:18",
+    "history": [],
+    "status": "approved",
+    "sensitive": false,
+    "auto_approved": true,
+    "priority": "normal",
+    "approved_at": "2026-08-17 17:18"
+  },
+  {
+    "question": "今天天气怎么样",
+    "answer": "我无法查询实时天气，建议查看手机天气应用或当地气象部门预报。",
+    "original_answer": "关于天气情况，我这边暂时无法查询实时天气信息。建议您查看手机自带的天气应用，或者搜索当地气象部门发布的天气预报。\n\n如果还有其他关于 Neowow 平台使用的问题，随时可以问我。",
+    "count": 2,
+    "first_asked": "2026-08-18 11:20",
+    "last_asked": "2026-08-18 11:53",
+    "history": [
+      [
+        "user",
+        "Neowow是Midjourney的官网吗"
+      ],
+      [
+        "assistant",
+        "Neowow不是Midjourney官网，是独立的AIGC内容创作平台。我们集成了多种AI模型（包括类MJ模型），但有自己的画布和工作流系统。官方API开放后会第一时间接入。"
+      ]
+    ],
+    "status": "approved",
+    "sensitive": false,
+    "auto_approved": true,
+    "priority": "normal",
+    "approved_at": "2026-08-18 11:53"
+  },
+  {
+    "question": "我找不到棍木了",
+    "answer": "请提供具体场景或页面，确认“棍木”指什么，以便准确帮您排查。",
+    "original_answer": "您好，您说的“棍木”我暂时无法确认具体指什么。请问您是指平台内的某个素材、功能名称，还是其他内容？方便的话请补充一下具体场景，例如是在哪个页面或操作中遇到的，这样我可以更准确地帮您排查。",
+    "count": 1,
+    "first_asked": "2026-08-18 11:34",
+    "last_asked": "2026-08-18 11:34",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "今天出门要带伞吗",
+    "answer": "抱歉，我无法查询天气，建议查看天气App或网站获取准确信息。",
+    "original_answer": "我是 Neowow 平台的智能客服，主要解答平台功能、套餐和使用问题。天气情况我无法查询，建议你查看天气 App 或相关网站获取准确信息。有其他平台相关的问题随时告诉我。",
+    "count": 1,
+    "first_asked": "2026-08-18 11:44",
+    "last_asked": "2026-08-18 11:44",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "我出门忘带伞了，怎么把",
+    "answer": "这个问题与Neowow平台无关，建议避雨或买伞。如有平台使用问题，欢迎再问。",
+    "original_answer": "这个问题和 Neowow 平台的功能无关，我暂时无法给出建议。建议你关注天气情况，找个地方避雨，或者购买一把新伞。如果还有其他关于 Neowow 平台使用的问题，随时可以问我。",
+    "count": 1,
+    "first_asked": "2026-08-18 11:52",
+    "last_asked": "2026-08-18 11:52",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "卧槽你怎么到我家里来了",
+    "answer": "我是智能客服，只能通过文字交流，不会出现在你家里。如有平台问题，请直接咨询。",
+    "original_answer": "我是 Neowow 的智能客服助手，只能通过文字和你交流，不会出现在你家里。请问你是想咨询平台功能或使用问题吗？",
+    "count": 1,
+    "first_asked": "2026-08-18 12:04",
+    "last_asked": "2026-08-18 12:04",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "你认识滚木吗",
+    "answer": "请提供“滚木”的具体上下文（如平台功能或操作问题），以便准确解答。",
+    "original_answer": "我不太确定“滚木”具体指什么，能否补充一下上下文？比如是平台功能、操作问题，还是其他内容？这样我可以更准确地帮你解答。",
+    "count": 1,
+    "first_asked": "2026-08-18 12:28",
+    "last_asked": "2026-08-18 12:28",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "那我缺的营养这块谁给我补啊",
+    "answer": "建议联系人工客服确认营养补充事宜。",
+    "original_answer": "这个我暂时无法确认，建议联系人工客服。",
+    "count": 1,
+    "first_asked": "2026-08-18 12:35",
+    "last_asked": "2026-08-18 12:35",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "平台支不支持第三方平台注册登录",
+    "answer": "平台目前仅支持账号登录授权，暂未明确支持第三方平台注册登录，建议查看官网登录页或咨询人工客服确认。",
+    "original_answer": "目前 Neowow 平台支持通过账号登录授权的方式使用平台功能。具体来说，您可以在首页点击「登录」入口，跳转至登录授权页面，通过账号完成授权后即可使用全部功能。\n\n至于是否支持第三方平台（如火山引擎、抖音等）直接注册登录，知识库中没有明确说明。建议您登录官网查看登录页的选项，或点击「转人工客服」进一步确认。",
+    "count": 1,
+    "first_asked": "2026-08-18 18:48",
+    "last_asked": "2026-08-18 18:48",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "你老大是谁",
+    "answer": "我是Neowow Studio平台的智能客服助手，由Neowow团队开发维护。",
+    "original_answer": "我是 Neowow Studio 平台的智能客服助手，由 Neowow 团队开发和维护。\n\n如果您对平台的功能、套餐或使用有任何疑问，可以随时告诉我，我会尽力协助。",
+    "count": 1,
+    "first_asked": "2026-08-19 13:00",
+    "last_asked": "2026-08-19 13:00",
+    "history": [
+      [
+        "user",
+        "今天天气怎么样"
+      ],
+      [
+        "assistant",
+        "我无法查询实时天气，建议查看手机天气应用或当地气象部门预报。"
+      ],
+      [
+        "user",
+        "卧槽你到我家里来干什么"
+      ],
+      [
+        "assistant",
+        "抱歉，我是线上的智能客服，没有实体存在，无法到访任何地点。\n\n如果您在使用 Neowow 平台过程中遇到任何问题，例如功能使用、套餐或生成内容等，我很乐意协助您解答。"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "呦呵原来你也玩原神",
+    "answer": "我是Neowow客服助手，只解答平台相关问题，不涉及游戏内容。",
+    "original_answer": "哈哈，看来我推荐的积分充值方式让你联想到原神了。不过我是 Neowow 的客服助手，只负责解答平台相关问题，对游戏一窍不通。\n\n如果你有关于 Neowow 平台功能、套餐、操作等方面的问题，随时可以问我。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:10",
+    "last_asked": "2026-08-19 14:10",
+    "history": [
+      [
+        "user",
+        "怎么充值积分"
+      ],
+      [
+        "assistant",
+        "充值方式：1. 支付宝/微信支付/银行卡：汇率为1积分=¥0.01（即1000积分=¥10）2. 礼品卡兑换：礼品卡享8折优惠。充值档位有1000、5000、10000、30000、50000、100000积分可选。充值后积分即时到账。可在账户中心查看充值记录和积分余额。"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "你去5教等我吧",
+    "answer": "我是智能客服，无法线下见面或安排地点，请咨询Neowow平台功能或操作问题。",
+    "original_answer": "我是 Neowow 的智能客服助手，不涉及线下见面或具体地点安排。请问您在使用 Neowow 平台时遇到了什么问题？我可以帮您解答平台功能、套餐或操作相关的内容。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:17",
+    "last_asked": "2026-08-19 14:17",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "bro你不会以为我是你爹吧",
+    "answer": "我是Neowow智能客服助手，不涉及个人身份或社交关系，仅提供平台功能、套餐或内容生成方面的帮助。",
+    "original_answer": "我是 Neowow 的智能客服助手，不涉及个人身份或社交关系。如果您在使用平台时遇到任何问题，比如功能操作、套餐选择或内容生成，可以随时告诉我，我会尽力协助。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:19",
+    "last_asked": "2026-08-19 14:19",
+    "history": [
+      [
+        "user",
+        "你去5教等我吧"
+      ],
+      [
+        "assistant",
+        "我是 Neowow 的智能客服助手，不涉及线下见面或具体地点安排。请问您在使用 Neowow 平台时遇到了什么问题？我可以帮您解答平台功能、套餐或操作相关的内容。"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "我要去bw了，你去吗",
+    "answer": "BW很热闹，但我是AI客服无法到场，可帮你解答Neowow相关问题。",
+    "original_answer": "哈哈，BW（Bilibili World）确实很热闹！不过我作为AI客服没法亲自去现场，但我可以帮你解答Neowow相关的功能或操作问题。如果你在BW上看到我们的展台，欢迎来体验。有什么需要帮忙的吗？",
+    "count": 1,
+    "first_asked": "2026-08-19 14:30",
+    "last_asked": "2026-08-19 14:30",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "额明年cj展你还去吗",
+    "answer": "我无法参加线下CJ展，但欢迎你在展台体验Neowow产品，有问题随时问我。",
+    "original_answer": "哈哈，CJ（ChinaJoy）也是大型展会呢。不过我还是只能待在线上，没法去现场。如果你在CJ上看到Neowow的展台，欢迎去体验我们的产品。有功能或操作上的问题，随时可以问我。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:30",
+    "last_asked": "2026-08-19 14:30",
+    "history": [
+      [
+        "user",
+        "我要去bw了，你去吗"
+      ],
+      [
+        "assistant",
+        "哈哈，BW（Bilibili World）确实很热闹！不过我作为AI客服没法亲自去现场，但我可以帮你解答Neowow相关的功能或操作问题。如果你在BW上看到我们的展台，欢迎来体验。有什么需要帮忙的吗？"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "海绵宝宝我们去抓水母吧",
+    "answer": "这里是Neowow平台，提供智能创意内容生产与协作服务，不涉及抓水母相关功能。",
+    "original_answer": "你好，我是 Neowow 智能客服助手。这里是 Neowow 平台，主要提供智能创意内容生产与协作服务。如果你有关于平台功能、套餐或使用上的问题，随时可以告诉我。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:43",
+    "last_asked": "2026-08-19 14:43",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "我下班啦蟹老板",
+    "answer": "我是Neowow智能客服，不玩梗，只解答平台功能、套餐或使用问题。",
+    "original_answer": "看起来你是在玩《海绵宝宝》的梗。不过我是 Neowow 的智能客服，主要帮你解答平台功能、套餐或使用上的问题。\n\n如果你有关于 Neowow 的操作疑问，随时告诉我。祝你下班愉快。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:44",
+    "last_asked": "2026-08-19 14:44",
+    "history": [
+      [
+        "user",
+        "海绵宝宝我们去抓水母吧"
+      ],
+      [
+        "assistant",
+        "你好，我是 Neowow 智能客服助手。这里是 Neowow 平台，主要提供智能创意内容生产与协作服务。如果你有关于平台功能、套餐或使用上的问题，随时可以告诉我。"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "上海宁么切股撒好额么子",
+    "answer": "抱歉，无法理解您的问题，请具体描述Neowow平台相关疑问。",
+    "original_answer": "你好，我这边不太确定你具体想问的是什么。如果你是在问 Neowow 平台相关的功能或使用问题，可以再具体描述一下，我会尽力帮你解答。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:44",
+    "last_asked": "2026-08-19 14:44",
+    "history": [
+      [
+        "user",
+        "海绵宝宝我们去抓水母吧"
+      ],
+      [
+        "assistant",
+        "你好，我是 Neowow 智能客服助手。这里是 Neowow 平台，主要提供智能创意内容生产与协作服务。如果你有关于平台功能、套餐或使用上的问题，随时可以告诉我。"
+      ],
+      [
+        "user",
+        "我下班啦蟹老板"
+      ],
+      [
+        "assistant",
+        "看起来你是在玩《海绵宝宝》的梗。不过我是 Neowow 的智能客服，主要帮你解答平台功能、套餐或使用上的问题。\n\n如果你有关于 Neowow 的操作疑问，随时告诉我。祝你下班愉快。"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "不！这里是派大星！！！到底哪个傻子教蟹堡王",
+    "answer": "这里是Neowow智能客服，不提供蟹堡王服务，如有平台问题请直接咨询。",
+    "original_answer": "哈哈，看来您是在玩梗。这里是 Neowow 智能客服，不是派大星，也不做蟹堡王。如果您有关于 Neowow 平台的问题，比如功能、套餐、操作等，可以随时问我，我会尽力帮您解答。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:51",
+    "last_asked": "2026-08-19 14:51",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "你竖笛吹的太难听了",
+    "answer": "Neowow平台无竖笛功能，仅提供产品、操作及套餐相关服务。",
+    "original_answer": "看来您还在继续玩梗。我这边没有竖笛，也不会吹奏。如果您想聊 Neowow 平台的功能、操作或套餐，我很乐意帮您解答。",
+    "count": 1,
+    "first_asked": "2026-08-19 14:52",
+    "last_asked": "2026-08-19 14:52",
+    "history": [
+      [
+        "user",
+        "不！这里是派大星！！！到底哪个傻子教蟹堡王"
+      ],
+      [
+        "assistant",
+        "哈哈，看来您是在玩梗。这里是 Neowow 智能客服，不是派大星，也不做蟹堡王。如果您有关于 Neowow 平台的问题，比如功能、套餐、操作等，可以随时问我，我会尽力帮您解答。"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "你说什么？",
+    "answer": "我是Neowow平台智能客服，可解答功能、操作、套餐等问题。",
+    "original_answer": "我是 Neowow 平台的智能客服助手，可以帮你解答平台功能、操作、套餐等问题。有什么需要帮忙的吗？",
+    "count": 1,
+    "first_asked": "2026-08-19 14:58",
+    "last_asked": "2026-08-19 14:58",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "这个任务还能重试吗？",
+    "answer": "任务失败无法直接重试，可修改提示词后重新发起；若仍失败，请提交工单附任务ID（000465cf4f9545bfa47ba66ee5e2544b）协助排查。",
+    "original_answer": "这个任务已经失败，无法直接重试。但您可以按照以下步骤操作：\n\n1. 修改提示词，移除可能涉及敏感内容的部分（如暴力、色情、政治等表述）\n2. 使用修改后的提示词重新发起一个新的生成任务\n\n如果调整后仍然失败，可能是系统误判。建议点击「转人工客服」提交工单，并附上原任务ID（000465cf4f9545bfa47ba66ee5e2544b），我们会协助排查。",
+    "count": 1,
+    "first_asked": "2026-08-19 16:58",
+    "last_asked": "2026-08-19 16:58",
+    "history": [
+      [
+        "user",
+        "视频生成失败了 000465cf4f9545bfa47ba66ee5e2544b"
+      ],
+      [
+        "assistant",
+        "【查询结果】您的任务状态为：失败\n【失败原因】输入文本可能含敏感信息，请修改后重试。\n【平台报错】The request failed because the input text may contain sensitive information. Request id: 02177751842\n\n请根据以上信息检查并修改后重试。如仍有问题，请点击「转人工客服」提交工单。"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
   }
 ]

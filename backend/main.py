@@ -298,6 +298,7 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
             "ticket_summary": "",
             "troubleshoot_flow": prev_troubleshoot_flow,
             "troubleshoot_step": prev_troubleshoot_step,
+            "user_memory": {},
         })
 
         response_text = result.get("response", "")
@@ -551,17 +552,22 @@ def record_stat(stat_type: str, tokens: int = 0):
         stats["llm_calls"] += 1
     elif stat_type == "ticket":
         stats["tickets_created"] += 1
+    elif stat_type == "troubleshoot":
+        stats.setdefault("troubleshoot_count", 0)
+        stats["troubleshoot_count"] += 1
 
     # 按日期统计
     today = datetime.now().strftime("%Y-%m-%d")
     if today not in stats["daily"]:
-        stats["daily"][today] = {"calls": 0, "tokens": 0, "kb": 0, "llm": 0}
+        stats["daily"][today] = {"calls": 0, "tokens": 0, "kb": 0, "llm": 0, "troubleshoot": 0}
     stats["daily"][today]["calls"] += 1
     stats["daily"][today]["tokens"] += tokens
     if stat_type == "kb":
         stats["daily"][today]["kb"] += 1
     elif stat_type == "llm":
         stats["daily"][today]["llm"] += 1
+    elif stat_type == "troubleshoot":
+        stats["daily"][today]["troubleshoot"] += 1
 
     save_stats(stats)
     return stats
@@ -582,6 +588,61 @@ def get_stats(_ip: str = Depends(check_rate_limit)):
     except Exception as e:
         logger.exception("获取统计失败：%s", str(e))
         raise HTTPException(status_code=500, detail="获取统计失败")
+
+
+@app.get("/api/stats/dashboard")
+def get_dashboard_stats(_ip: str = Depends(check_rate_limit)):
+    """获取看板统计数据（聚合 + 趋势）"""
+    try:
+        stats = load_stats()
+        total = stats["kb_hits"] + stats["llm_calls"]
+        hit_rate = round(stats["kb_hits"] / total * 100, 2) if total > 0 else 0
+
+        # 满意度统计
+        feedback = load_feedback()
+        fb_total = len(feedback)
+        fb_avg = round(sum(f['rating'] for f in feedback) / fb_total, 2) if fb_total > 0 else 0
+        fb_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        for f in feedback:
+            r = f.get('rating', 0)
+            if r in fb_dist:
+                fb_dist[r] += 1
+
+        # 每日趋势（按日期排序）
+        daily_trend = []
+        for date in sorted(stats.get("daily", {}).keys()):
+            d = stats["daily"][date]
+            day_total = d.get("kb", 0) + d.get("llm", 0)
+            day_hit = round(d.get("kb", 0) / day_total * 100, 2) if day_total > 0 else 0
+            daily_trend.append({
+                "date": date,
+                "calls": d.get("calls", 0),
+                "kb": d.get("kb", 0),
+                "llm": d.get("llm", 0),
+                "troubleshoot": d.get("troubleshoot", 0),
+                "hit_rate": day_hit,
+            })
+
+        return {
+            "summary": {
+                "total_calls": stats["total_calls"],
+                "kb_hits": stats["kb_hits"],
+                "llm_calls": stats["llm_calls"],
+                "tickets_created": stats.get("tickets_created", 0),
+                "troubleshoot_count": stats.get("troubleshoot_count", 0),
+                "kb_hit_rate": hit_rate,
+                "total_days": len(stats.get("daily", {})),
+            },
+            "daily_trend": daily_trend,
+            "feedback_stats": {
+                "total": fb_total,
+                "average": fb_avg,
+                "distribution": fb_dist,
+            },
+        }
+    except Exception as e:
+        logger.exception("获取看板统计失败：%s", str(e))
+        raise HTTPException(status_code=500, detail="获取看板统计失败")
 
 
 # ── 工单 API ──
@@ -849,6 +910,7 @@ async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)
             "ticket_summary": "",
             "troubleshoot_flow": prev_troubleshoot_flow,
             "troubleshoot_step": prev_troubleshoot_step,
+            "user_memory": {},
         })
 
         response_text = result.get("response", "")

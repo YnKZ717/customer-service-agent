@@ -3,6 +3,7 @@ import LoginView from '../views/LoginView.vue'
 import ChatView from '../views/ChatView.vue'
 import AdminView from '../views/AdminView.vue'
 import TicketsView from '../views/TicketsView.vue'
+import DashboardView from '../views/DashboardView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -10,6 +11,7 @@ const router = createRouter({
     { path: '/', redirect: '/chat' },
     { path: '/login', name: 'login', component: LoginView },
     { path: '/chat', name: 'chat', component: ChatView, meta: { requiresAuth: true } },
+    { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true, roles: ['admin'] } },
     { path: '/admin', name: 'admin', component: AdminView, meta: { requiresAuth: true, roles: ['admin'] } },
     { path: '/tickets', name: 'tickets', component: TicketsView, meta: { requiresAuth: true, roles: ['admin', 'support'] } },
   ],

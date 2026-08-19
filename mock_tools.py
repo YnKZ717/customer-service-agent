@@ -11,6 +11,17 @@ CANVAS_NODE_API = "https://dev.neodomain.cn/admin/api/v1/debug/canvas-node"
 API_KEY = "v8dn_7Pr31wvI399PB-BAXOVOsgaksba7BWj7J3QOEM"
 
 
+# ── 模拟用户数据（积分/会员查询用）───
+MOCK_USER = {
+    "user_id": "test_user_001",
+    "credits_balance": 1250,
+    "member_level": "PLUS",
+    "member_expire": "2027-06-15",
+    "monthly_quota": 50,
+    "monthly_used": 23,
+}
+
+
 def check_task_status(task_id: str) -> dict:
     """
     查询任务状态（真实API）

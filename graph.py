@@ -28,6 +28,7 @@ class AgentState(dict):
     ticket_summary: str      # 工单摘要
     troubleshoot_flow: str   # 当前排查流程 ID（如 "video_fail"）
     troubleshoot_step: int   # 当前排查步骤（0, 1, 2...）
+    user_memory: dict        # 多轮记忆 {task_id, member_level, problem_type, ...}
 
 
 def build_graph():

@@ -27,3 +27,85 @@
 {"timestamp": "2026-08-17 14:33:41.302", "step": "tool_call", "tool": "check_member_status", "params": {}, "result": {"user_id": "test_user_001", "member_level": "PLUS", "member_expire": "2026-09-15 23:59:59", "days_remaining": 29, "benefits": ["消费95折优惠", "每月50次免费生成", "支持2K画质", "最长10秒视频"]}}
 {"timestamp": "2026-08-17 14:33:41.306", "step": "step0", "user_input": "会员快到期了怎么办", "matched_branch": "step1"}
 {"timestamp": "2026-08-17 14:33:42.270", "step": 1, "response": "您当前是 PLUS 会员，会员有效期至 2026-09-15，剩余 29 天，暂时不需要担心到期问题", "is_final": false}
+{"timestamp": "2026-08-17 15:02:17.521", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 15:02:17.521", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:02:18.373", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 15:02:20.449", "step": "flow_start", "flow_id": "image_fail", "user_input": "图片生成不出来"}
+{"timestamp": "2026-08-17 15:02:20.450", "step": "kb_lookup", "categories": ["image_generation", "copyright", "content_policy", "prompt"], "match_count": 4, "matches": []}
+{"timestamp": "2026-08-17 15:02:21.060", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我。", "is_final": false}
+{"timestamp": "2026-08-17 15:02:23.144", "step": "flow_start", "flow_id": "timeout", "user_input": "等了很久了太慢了"}
+{"timestamp": "2026-08-17 15:02:23.145", "step": "kb_lookup", "categories": ["usage", "video_generation"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:02:24.026", "step": 0, "response": "请问是什么任务？等了大概多久了？（图片/视频/超分/其他）", "is_final": false}
+{"timestamp": "2026-08-17 15:11:39.700", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 15:11:39.701", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:11:40.663", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 15:11:42.732", "step": "flow_start", "flow_id": "image_fail", "user_input": "图片生成不出来"}
+{"timestamp": "2026-08-17 15:11:42.732", "step": "kb_lookup", "categories": ["image_generation", "copyright", "content_policy", "prompt"], "match_count": 4, "matches": []}
+{"timestamp": "2026-08-17 15:11:43.240", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我。", "is_final": false}
+{"timestamp": "2026-08-17 15:11:45.319", "step": "flow_start", "flow_id": "timeout", "user_input": "等了很久了太慢了"}
+{"timestamp": "2026-08-17 15:11:45.320", "step": "kb_lookup", "categories": ["usage", "video_generation"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:11:46.003", "step": 0, "response": "请问是什么任务？等了大概多久了？（图片/视频/超分/其他）", "is_final": false}
+{"timestamp": "2026-08-17 15:15:13.587", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 15:15:13.587", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:15:14.392", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 15:15:16.465", "step": "flow_start", "flow_id": "image_fail", "user_input": "图片生成不出来"}
+{"timestamp": "2026-08-17 15:15:16.466", "step": "kb_lookup", "categories": ["image_generation", "copyright", "content_policy", "prompt"], "match_count": 4, "matches": []}
+{"timestamp": "2026-08-17 15:15:17.092", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我。", "is_final": false}
+{"timestamp": "2026-08-17 15:15:19.168", "step": "flow_start", "flow_id": "timeout", "user_input": "等了很久了太慢了"}
+{"timestamp": "2026-08-17 15:15:19.169", "step": "kb_lookup", "categories": ["usage", "video_generation"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:15:20.017", "step": 0, "response": "请问是什么任务？等了大概多久了？（图片/视频/超分/其他）", "is_final": false}
+{"timestamp": "2026-08-17 15:15:22.093", "step": "flow_start", "flow_id": "video_fail", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f"}
+{"timestamp": "2026-08-17 15:15:22.094", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:15:22.396", "step": "tool_call", "tool": "check_task_status", "params": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f"}, "result": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f", "type": "text_to_video", "status": "failed", "error_code": "copyright_restricted", "error_message": "检测到版权敏感元素", "created_at": "2026-08-17 16:20:15", "model": "kling-v2.5", "duration": 5, "resolution": "1080P"}}
+{"timestamp": "2026-08-17 15:15:22.398", "step": "step0", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f", "matched_branch": "step1"}
+{"timestamp": "2026-08-17 15:15:24.272", "step": 1, "response": "已查询到该任务状态：\n\n- 任务ID：8078e05dfc514a299c7b40d37e61fa0", "is_final": false}
+{"timestamp": "2026-08-17 15:17:48.032", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 15:17:48.032", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:17:48.706", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 15:17:50.779", "step": "flow_start", "flow_id": "image_fail", "user_input": "图片生成不出来"}
+{"timestamp": "2026-08-17 15:17:50.779", "step": "kb_lookup", "categories": ["image_generation", "copyright", "content_policy", "prompt"], "match_count": 4, "matches": []}
+{"timestamp": "2026-08-17 15:17:51.550", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我。", "is_final": false}
+{"timestamp": "2026-08-17 15:17:53.632", "step": "flow_start", "flow_id": "timeout", "user_input": "等了很久了太慢了"}
+{"timestamp": "2026-08-17 15:17:53.633", "step": "kb_lookup", "categories": ["usage", "video_generation"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:17:54.394", "step": 0, "response": "请问是什么任务？等了大概多久了？（图片/视频/超分/其他）", "is_final": false}
+{"timestamp": "2026-08-17 15:17:56.472", "step": "flow_start", "flow_id": "video_fail", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f"}
+{"timestamp": "2026-08-17 15:17:56.473", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:17:56.775", "step": "tool_call", "tool": "check_task_status", "params": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f"}, "result": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f", "type": "text_to_video", "status": "failed", "error_code": "copyright_restricted", "error_message": "检测到版权敏感元素", "created_at": "2026-08-17 16:20:15", "model": "kling-v2.5", "duration": 5, "resolution": "1080P"}}
+{"timestamp": "2026-08-17 15:17:56.778", "step": "step0", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f", "matched_branch": "step1"}
+{"timestamp": "2026-08-17 15:17:58.762", "step": 1, "response": "已查询到该任务状态：\n\n- 任务ID：8078e05dfc514a299c7b40d37e61fa0", "is_final": false}
+{"timestamp": "2026-08-17 15:23:28.426", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 15:23:28.427", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:23:29.300", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 15:23:31.373", "step": "flow_start", "flow_id": "image_fail", "user_input": "图片生成不出来"}
+{"timestamp": "2026-08-17 15:23:31.374", "step": "kb_lookup", "categories": ["image_generation", "copyright", "content_policy", "prompt"], "match_count": 4, "matches": []}
+{"timestamp": "2026-08-17 15:23:31.884", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我。", "is_final": false}
+{"timestamp": "2026-08-17 15:23:33.963", "step": "flow_start", "flow_id": "timeout", "user_input": "等了很久了太慢了"}
+{"timestamp": "2026-08-17 15:23:33.964", "step": "kb_lookup", "categories": ["usage", "video_generation"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:23:34.673", "step": 0, "response": "请问是什么任务？等了大概多久了？（图片/视频/超分/其他）", "is_final": false}
+{"timestamp": "2026-08-17 15:23:36.758", "step": "flow_start", "flow_id": "video_fail", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f"}
+{"timestamp": "2026-08-17 15:23:36.759", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:23:37.062", "step": "tool_call", "tool": "check_task_status", "params": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f"}, "result": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f", "type": "text_to_video", "status": "failed", "error_code": "copyright_restricted", "error_message": "检测到版权敏感元素", "created_at": "2026-08-17 16:20:15", "model": "kling-v2.5", "duration": 5, "resolution": "1080P"}}
+{"timestamp": "2026-08-17 15:23:37.064", "step": "step0", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f", "matched_branch": "step1"}
+{"timestamp": "2026-08-17 15:23:38.785", "step": 1, "response": "已查询到该任务状态：\n\n- 任务ID：8078e05dfc514a299c7b40d37e61fa0", "is_final": false}
+{"timestamp": "2026-08-17 15:33:39.275", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 15:33:39.275", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:33:39.938", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 15:33:42.010", "step": "flow_start", "flow_id": "image_fail", "user_input": "图片生成不出来"}
+{"timestamp": "2026-08-17 15:33:42.010", "step": "kb_lookup", "categories": ["image_generation", "copyright", "content_policy", "prompt"], "match_count": 4, "matches": []}
+{"timestamp": "2026-08-17 15:33:42.761", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我。", "is_final": false}
+{"timestamp": "2026-08-17 15:33:44.834", "step": "flow_start", "flow_id": "timeout", "user_input": "等了很久了太慢了"}
+{"timestamp": "2026-08-17 15:33:44.834", "step": "kb_lookup", "categories": ["usage", "video_generation"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:33:45.381", "step": 0, "response": "请问是什么任务？等了大概多久了？（图片/视频/超分/其他）", "is_final": false}
+{"timestamp": "2026-08-17 15:33:47.461", "step": "flow_start", "flow_id": "video_fail", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f"}
+{"timestamp": "2026-08-17 15:33:47.461", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:33:47.762", "step": "tool_call", "tool": "check_task_status", "params": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f"}, "result": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f", "type": "text_to_video", "status": "failed", "error_code": "copyright_restricted", "error_message": "检测到版权敏感元素", "created_at": "2026-08-17 16:20:15", "model": "kling-v2.5", "duration": 5, "resolution": "1080P"}}
+{"timestamp": "2026-08-17 15:33:47.765", "step": "step0", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f", "matched_branch": "step1"}
+{"timestamp": "2026-08-17 15:33:49.711", "step": 1, "response": "已查询到该任务状态：\n\n- 任务ID：8078e05dfc514a299c7b40d37e61fa0", "is_final": false}
+{"timestamp": "2026-08-17 15:35:07.601", "step": "flow_start", "flow_id": "video_fail", "user_input": "视频生成失败了"}
+{"timestamp": "2026-08-17 15:35:07.601", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:35:08.367", "step": 0, "response": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。", "is_final": false}
+{"timestamp": "2026-08-17 15:35:22.399", "step": "flow_start", "flow_id": "video_fail", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f"}
+{"timestamp": "2026-08-17 15:35:22.401", "step": "kb_lookup", "categories": ["video_generation", "copyright", "content_policy", "prompt", "usage"], "match_count": 5, "matches": []}
+{"timestamp": "2026-08-17 15:35:22.702", "step": "tool_call", "tool": "check_task_status", "params": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f"}, "result": {"task_id": "8078e05dfc514a299c7b40d37e61fa0f", "type": "text_to_video", "status": "failed", "error_code": "copyright_restricted", "error_message": "检测到版权敏感元素", "created_at": "2026-08-17 16:20:15", "model": "kling-v2.5", "duration": 5, "resolution": "1080P"}}
+{"timestamp": "2026-08-17 15:35:22.704", "step": "step0", "user_input": "TaskID 是 8078e05dfc514a299c7b40d37e61fa0f", "matched_branch": "step1"}
+{"timestamp": "2026-08-17 15:35:25.007", "step": 1, "response": "我查询了该任务的详细信息：\n\n- **任务ID**: 8078e05dfc514a299c7b40d", "is_final": false}

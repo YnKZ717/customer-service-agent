@@ -138,7 +138,7 @@ async function sendMessage(text: string) {
                 timestamp: messages.value[replyIndex].timestamp,
                 images: images.length > 0 ? images : undefined,
                 isTroubleshooting,
-                troubleshootStep: isTroubleshooting ? troubleshootStep + 1 : undefined,
+                troubleshootStep: isTroubleshooting ? troubleshootStep : undefined,
               }
               // 每 5 个字符滚动一次
               if (fullResponse.length % 5 === 0) {

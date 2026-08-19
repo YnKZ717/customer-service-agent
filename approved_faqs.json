@@ -182,5 +182,30 @@
     "question": "会员快到期了怎么办",
     "answer": "会员到期前可在个人中心查看时间并续费或升级；到期后权益暂停但数据保留，续费后恢复。",
     "category": "auto_approved"
+  },
+  {
+    "question": "CodingPlan是什么",
+    "answer": "CodingPlan并非Neowow平台的功能或术语，知识库无相关信息，建议确认来源或描述具体场景。",
+    "category": "auto_approved"
+  },
+  {
+    "question": "怎么申请退款",
+    "answer": "点击页面右下角「转人工客服」提交退款工单，附上账号、订单号和退款原因，客服核实后按政策处理。",
+    "category": "auto_approved"
+  },
+  {
+    "question": "如何上传自定义技能",
+    "answer": "进入「技能市场」点击「发布技能」，上传技能文件并填写信息后确认发布即可。",
+    "category": "auto_approved"
+  },
+  {
+    "question": "你好",
+    "answer": "你好，我是Neowow Studio智能客服，可解答平台功能、操作指南或常见问题。",
+    "category": "auto_approved"
+  },
+  {
+    "question": "今天天气怎么样",
+    "answer": "我无法查询实时天气，建议查看手机天气应用或当地气象部门预报。",
+    "category": "auto_approved"
   }
 ]

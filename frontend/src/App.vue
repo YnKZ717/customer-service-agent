@@ -52,6 +52,7 @@ const showTickets = () => user.value?.role === 'admin' || user.value?.role === '
       <nav>
         <RouterLink to="/chat" class="nav-item">💬 客服对话</RouterLink>
         <RouterLink v-if="showTickets()" to="/tickets" class="nav-item"> 工单管理</RouterLink>
+        <RouterLink v-if="showAdmin()" to="/dashboard" class="nav-item">📊 数据看板</RouterLink>
         <RouterLink v-if="showAdmin()" to="/admin" class="nav-item">📋 FAQ 管理</RouterLink>
       </nav>
 
