@@ -946,5 +946,35 @@
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
+  },
+  {
+    "question": "排查流程中匹配到\"敏感\"关键词",
+    "answer": "“敏感”关键词若为内容拦截，请核对提示词后提交TaskID、浏览器地址和完整提示词至人工客服复核，24小时内处理。",
+    "original_answer": "【排查说明】您提到的“敏感”关键词，在内容审核中通常指向两种不同机制，需要区分处理：\n\n1. 版权限制（涉及知名IP、品牌Logo等）\n2. 敏感内容拦截（涉及暴力、色情、政治等）\n\n从您之前提供的 TaskID（000465cf4f9545bfa47ba66ee5e2544b）报错信息看，属于第二种“敏感内容拦截”。系统提示“输入文本可能含敏感信息”，但结合您反馈的内容判断，可能存在误伤。\n\n【处理建议】\n1. 请先核对提示词中是否有涉及特定人群、地域、事件等易触发审核的词汇\n2. 若确认内容合规，请点击「转人工客服」提交工单，并附上：\n   - 原始 TaskID\n   - 画布浏览器地址（如有）\n   - 完整提示词内容\n3. 客服会向火山引擎申请人工复核，通常 24 小时内处理\n\n若需进一步排查其他任务，请提供新的 TaskID。",
+    "count": 1,
+    "first_asked": "2026-08-19 17:58",
+    "last_asked": "2026-08-19 17:58",
+    "history": [
+      [
+        "user",
+        "视频生成失败了 000465cf4f9545bfa47ba66ee5e2544b"
+      ],
+      [
+        "assistant",
+        "【查询结果】您的任务状态为：失败\n【失败原因】输入文本可能含敏感信息，请修改后重试。\n【平台报错】The request failed because the input text may contain sensitive information. Request id: 02177751842\n\n【系统判断】⚠️ 检测到可能是平台误伤（内容实际合规但被错误拦截）\n\n建议：\n1. 先尝试精简提示词，避免使用可能触发审核的词汇\n2. 如确认内容合规，请点击「转人工客服」提交工单，附上 TaskID\n3. 客服会向平台申请内容复核，通常 24 小时内处理"
+      ],
+      [
+        "user",
+        "视频生成失败了 NOT_EXIST"
+      ],
+      [
+        "assistant",
+        "【查询结果】未找到该任务，请检查 TaskID 是否正确"
+      ]
+    ],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
   }
 ]

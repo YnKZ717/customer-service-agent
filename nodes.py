@@ -343,7 +343,19 @@ def troubleshoot(state: dict) -> dict:
                 response = f"【查询结果】您的任务状态为：失败\n【失败原因】{error}"
                 if platform_error:
                     response += f"\n【平台报错】{platform_error[:100]}"
-                response += "\n\n请根据以上信息检查并修改后重试。如仍有问题，请点击「转人工客服」提交工单。"
+
+                # 检测是否为疑似误伤
+                if _is_false_positive(task_result):
+                    response += "\n\n【系统判断】⚠️ 检测到可能是平台误伤（内容实际合规但被错误拦截）"
+                    response += (
+                        "\n\n建议：\n"
+                        "1. 先尝试精简提示词，避免使用可能触发审核的词汇\n"
+                        "2. 如确认内容合规，请点击「转人工客服」提交工单，附上 TaskID\n"
+                        "3. 客服会向平台申请内容复核，通常 24 小时内处理"
+                    )
+                else:
+                    response += "\n\n请根据以上信息检查并修改后重试。如仍有问题，请点击「转人工客服」提交工单。"
+
                 log_response(0, f"任务失败: {task_result.get('task_id')}")
                 return {
                     "response": response,
@@ -579,6 +591,45 @@ def _format_user_memory(memory: dict) -> str:
     return "\n## 用户记忆（跨轮次信息）\n" + "\n".join(parts) + "\n"
 
 
+def _is_false_positive(task_result: dict) -> bool:
+    """
+    判断是否为疑似误伤（平台误判）
+
+    判断逻辑：
+    - 错误码为 SYSTEM_ERROR 且错误信息包含敏感内容相关关键词
+    - 这类错误通常是平台过度拦截，用户内容可能实际合规
+    """
+    error_code = (task_result.get("error_code") or "").upper()
+    platform_error = (task_result.get("platform_error") or "").lower()
+    error_message = (task_result.get("error_message") or "").lower()
+
+    # 关键词：敏感信息、版权相关（这些是常见的误伤类型）
+    false_positive_keywords = [
+        "sensitive", "sensitive information",
+        "敏感", "敏感信息",
+    ]
+
+    # 判断：错误码是 SYSTEM_ERROR 且包含敏感内容关键词
+    if error_code == "SYSTEM_ERROR":
+        for kw in false_positive_keywords:
+            if kw in platform_error or kw in error_message:
+                return True
+
+    return False
+
+
+def _get_false_positive_guidance(task_result: dict) -> str:
+    """获取误伤引导文案"""
+    task_id = task_result.get("task_id", "")
+    return (
+        "\n\n⚠️ 检测到可能是平台误伤（内容实际合规但被错误拦截）。"
+        "建议：\n"
+        "1. 先尝试精简提示词，避免使用可能触发审核的词汇\n"
+        "2. 如确认内容合规，请点击「转人工客服」提交工单，附上 TaskID\n"
+        "3. 客服会向平台申请内容复核，通常 24 小时内处理"
+    )
+
+
 def _inject_tool_results(solution: str, tool_results: list) -> str:
     """将工具查询结果注入到解决方案中"""
     import json
@@ -592,6 +643,19 @@ def _inject_tool_results(solution: str, tool_results: list) -> str:
                 solution += f"\n\n【查询结果】您的任务状态为：失败\n【失败原因】{error}"
                 if platform_error:
                     solution += f"\n【平台报错】{platform_error[:100]}"
+
+                # 检测是否为疑似误伤
+                if _is_false_positive(result):
+                    solution += (
+                        "\n\n【系统判断】️ 检测到可能是平台误伤（内容实际合规但被错误拦截）"
+                        "\n\n建议：\n"
+                        "1. 先尝试精简提示词，避免使用可能触发审核的词汇\n"
+                        "2. 如确认内容合规，请点击「转人工客服」提交工单，附上 TaskID\n"
+                        "3. 客服会向平台申请内容复核，通常 24 小时内处理"
+                    )
+                else:
+                    solution += "\n\n请根据以上信息检查并修改后重试。如仍有问题，请点击「转人工客服」提交工单。"
+
             elif status == "PROCESSING":
                 solution += f"\n\n【查询结果】您的任务正在处理中，请耐心等待。"
             elif status == "SUCCESS":
