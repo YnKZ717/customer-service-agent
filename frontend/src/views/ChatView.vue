@@ -312,7 +312,12 @@ function closeImagePreview() {
         <div class="message-avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
         <div class="message-content">
           <div class="message-bubble">
-            <p>{{ msg.content }}</p>
+            <p v-if="msg.content">{{ msg.content }}</p>
+            <!-- 思考中动画（仅在内容为空且是助手消息时显示） -->
+            <div v-else-if="msg.role === 'assistant'" class="thinking-dots">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="thinking-text">思考中...</span>
+            </div>
             <p v-if="msg.ticketId" class="ticket-id">工单号：{{ msg.ticketId }}</p>
             <p v-if="msg.timestamp" class="message-time">{{ formatTime(msg.timestamp) }}</p>
           </div>
@@ -624,6 +629,19 @@ function closeImagePreview() {
 @keyframes bounce {
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
+}
+
+.thinking-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.thinking-text {
+  margin-left: 8px;
+  font-size: 13px;
+  color: #999;
 }
 
 .input-area {
