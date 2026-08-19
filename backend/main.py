@@ -767,15 +767,6 @@ def update_ticket_status(ticket_id: str, status: str, _ip: str = Depends(check_r
 
 
 # ── 启动 ──
-if __name__ == "__main__":
-    logger.info("=" * 50)
-    logger.info("Neowow 智能客服 API 启动中...")
-    logger.info("地址: http://0.0.0.0:8001")
-    logger.info("日志目录: %s", LOG_DIR)
-    logger.info("=" * 50)
-    uvicorn.run(app, host="0.0.0.0", port=8001)
-
-
 # ── 流式对话接口 ─────────────────────────────────────────────
 
 @app.post("/api/chat/stream")
@@ -890,9 +881,12 @@ async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)
             }
             yield f"data: {json.dumps(meta, ensure_ascii=False)}\n\n"
 
-            # 逐字推送回答
-            for char in response_text:
+            # 逐字推送回答（加延迟让流式效果更明显）
+            import asyncio
+            for i, char in enumerate(response_text):
                 yield f"data: {json.dumps({'chunk': char}, ensure_ascii=False)}\n\n"
+                if i % 3 == 0:  # 每 3 个字符延迟一次
+                    await asyncio.sleep(0.03)
 
             # 结束标记
             yield "data: [DONE]\n\n"
@@ -904,3 +898,14 @@ async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)
     except Exception as e:
         logger.exception("处理流式聊天请求时出错：%s", str(e))
         raise HTTPException(status_code=500, detail="处理请求失败，请稍后再试")
+
+
+if __name__ == "__main__":
+    logger.info("=" * 50)
+    logger.info("Neowow 智能客服 API 启动中...")
+    logger.info("地址: http://0.0.0.0:8001")
+    logger.info("日志目录: %s", LOG_DIR)
+    logger.info("=" * 50)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
+
+

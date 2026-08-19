@@ -66,14 +66,7 @@ async function sendMessage(text: string) {
   userInput.value = ''
   loading.value = true
 
-  // 创建占位回复消息（用于流式显示）
-  const replyMsg: Message = {
-    role: 'assistant',
-    content: '',
-    id: `msg-${Date.now()}-reply`,
-    timestamp: new Date(),
-  }
-  messages.value.push(replyMsg)
+  let replyIndex = -1  // 记录回复消息的索引
 
   try {
     const resp = await fetch(`${API_BASE}/api/chat/stream`, {
@@ -91,6 +84,9 @@ async function sendMessage(text: string) {
     let buffer = ''
     let metaReceived = false
     let fullResponse = ''
+    let isTroubleshooting = false
+    let troubleshootStep = 0
+    let images: string[] = []
 
     while (true) {
       const { done, value } = await reader!.read()
@@ -105,7 +101,6 @@ async function sendMessage(text: string) {
           const data = line.slice(6).trim()
 
           if (data === '[DONE]') {
-            // 流结束
             continue
           }
 
@@ -116,11 +111,24 @@ async function sendMessage(text: string) {
             if (!metaReceived && parsed.intent !== undefined) {
               metaReceived = true
               if (parsed.kb_images && parsed.kb_images.length > 0) {
-                replyMsg.images = parsed.kb_images
+                images = parsed.kb_images
               }
               if (parsed.is_troubleshooting) {
-                replyMsg.isTroubleshooting = true
-                replyMsg.troubleshootStep = parsed.troubleshoot_step
+                isTroubleshooting = true
+                troubleshootStep = parsed.troubleshoot_step
+              }
+              // 收到元数据后创建第一条回复消息
+              if (replyIndex === -1) {
+                messages.value.push({
+                  role: 'assistant',
+                  content: '',
+                  id: `msg-${Date.now()}-reply`,
+                  timestamp: new Date(),
+                  images: images.length > 0 ? images : undefined,
+                  isTroubleshooting,
+                  troubleshootStep: troubleshootStep + 1,
+                })
+                replyIndex = messages.value.length - 1
               }
               continue
             }
@@ -128,8 +136,20 @@ async function sendMessage(text: string) {
             // 后续是逐字内容
             if (parsed.chunk) {
               fullResponse += parsed.chunk
-              replyMsg.content = fullResponse
-              nextTick(() => scrollToBottom())
+              // 通过替换整个消息对象触发 Vue 响应式更新
+              if (replyIndex !== -1) {
+                messages.value[replyIndex] = {
+                  ...messages.value[replyIndex],
+                  content: fullResponse,
+                  images: images.length > 0 ? images : undefined,
+                  isTroubleshooting,
+                  troubleshootStep: troubleshootStep + 1,
+                }
+              }
+              // 每 5 个字符滚动一次
+              if (fullResponse.length % 5 === 0) {
+                scrollToBottom()
+              }
             }
           } catch {
             // 忽略解析错误
@@ -140,14 +160,20 @@ async function sendMessage(text: string) {
 
     // 添加到历史记录
     chatHistory.value.push(['user', text])
-    const historyContent = replyMsg.isTroubleshooting
-      ? `🔍 故障排查中（第${(replyMsg.troubleshootStep || 0) + 1}步）\n${fullResponse}`
+    const historyContent = isTroubleshooting
+      ? `🔍 故障排查中（第${troubleshootStep + 1}步）\n${fullResponse}`
       : fullResponse
     chatHistory.value.push(['assistant', historyContent])
 
     refreshStats()
   } catch (err) {
-    replyMsg.content = '抱歉，服务暂时不可用，请稍后再试。'
+    // 如果有占位消息，更新为错误信息
+    if (replyIndex !== -1) {
+      messages.value[replyIndex] = {
+        ...messages.value[replyIndex],
+        content: '抱歉，服务暂时不可用，请稍后再试。',
+      }
+    }
   } finally {
     loading.value = false
     nextTick(() => scrollToBottom())
