@@ -248,6 +248,7 @@ def troubleshoot(state: dict) -> dict:
     history = state.get("history", [])
     prev_flow = state.get("troubleshoot_flow", "")
     prev_step_idx = state.get("troubleshoot_step", 0)
+    user_images = state.get("user_images", [])
 
     #  1. 匹配或复用排查流程 ──
     if prev_flow and prev_flow != "resumed":
@@ -442,7 +443,7 @@ def troubleshoot(state: dict) -> dict:
             current_step = get_step(flow, next_id)
             current_step_idx = prev_step_idx + 1
 
-    # ── 5. 构建 LLM prompt（带决策树约束 + 工具结果 + 用户记忆）──
+    # ─ 5. 构建 LLM prompt（带决策树约束 + 工具结果 + 用户记忆）──
     flow_structure = _format_flow_structure(flow)
 
     # 构建工具结果上下文
@@ -455,24 +456,25 @@ def troubleshoot(state: dict) -> dict:
     # 构建用户记忆上下文
     memory_context = _format_user_memory(user_memory)
 
-    troubleshoot_prompt = f"""你是 Neowow 平台的技术支持，正在通过结构化流程引导用户排查问题。
-
-## 当前排查流程
-{flow_structure}
-
-## 知识库参考（与当前问题相关的FAQ）
-{kb_context if kb_context else "（暂无相关FAQ）"}
-{tool_context}{memory_context}
-## 回答规则
-- 简洁、直接、有条理，用编号或分点说明
-- 不要加emoji，不要用"哈""呢""啦"等语气词
-- 保持AI客服特征，不需要伪装成真人
-- 当前应该问的问题是："{current_step['question'] if current_step else '建议转人工客服'}"
-- 根据用户回答判断下一步，严格按照流程走
-- 如果已查询到任务状态/积分/会员信息，在回答中引用这些数据
-- 如果用户记忆中已有 TaskID，后续不需要再问
-- 如果问题已解决，给出解决方案
-- 如果排查步数已达上限({flow['max_steps']}步)，主动建议点击「转人工客服」提交工单"""
+    current_question = current_step['question'] if current_step else '建议转人工客服'
+    troubleshoot_prompt = (
+        "你是 Neowow 平台的技术支持，正在通过结构化流程引导用户排查问题。\n\n"
+        "## 当前排查流程\n"
+        f"{flow_structure}\n\n"
+        "## 知识库参考（与当前问题相关的FAQ）\n"
+        f"{kb_context if kb_context else '（暂无相关FAQ）'}\n"
+        f"{tool_context}{memory_context}\n"
+        "## 回答规则\n"
+        "- 简洁、直接、有条理，用编号或分点说明\n"
+        '- 不要加emoji，不要用"哈""呢""啦"等语气词\n'
+        "- 保持AI客服特征，不需要伪装成真人\n"
+        f"- 当前应该问的问题是：「{current_question}」\n"
+        "- 根据用户回答判断下一步，严格按照流程走\n"
+        "- 如果已查询到任务状态/积分/会员信息，在回答中引用这些数据\n"
+        "- 如果用户记忆中已有 TaskID，后续不需要再问\n"
+        "- 如果问题已解决，给出解决方案\n"
+        f"- 如果排查步数已达上限({flow['max_steps']}步)，主动建议点击「转人工客服」提交工单"
+    )
 
     messages = [{"role": "system", "content": troubleshoot_prompt}]
 
@@ -480,10 +482,20 @@ def troubleshoot(state: dict) -> dict:
     for role, content in history[-8:]:
         messages.append({"role": "user" if role == "user" else "assistant", "content": content})
 
-    messages.append({"role": "user", "content": user_input})
+    # 多模态：有图片时用 content array 格式
+    if user_images:
+        content_parts = [{"type": "text", "text": user_input}]
+        for img_b64 in user_images:
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{img_b64}"}
+            })
+        messages.append({"role": "user", "content": content_parts})
+    else:
+        messages.append({"role": "user", "content": user_input})
 
     # ── 6. 调用 LLM ──
-    reply = _call_llm(messages)
+    reply, model_used = _call_llm(messages)
 
     log_response(current_step_idx, reply[:50])
 
@@ -493,6 +505,7 @@ def troubleshoot(state: dict) -> dict:
         "troubleshoot_flow": flow_id,
         "troubleshoot_step": current_step_idx,
         "user_memory": user_memory,
+        "model_used": model_used,
     }
 
 
@@ -688,9 +701,12 @@ def _format_flow_structure(flow: dict) -> str:
     return "\n".join(lines)
 
 
-def _call_llm(messages: list) -> str:
-    """调用 LLM（主模型 + 自动重试 + 备用模型降级）"""
+def _call_llm(messages: list) -> tuple:
+    """调用 LLM（主模型 + 自动重试 + 备用模型降级）
+    返回: (reply, model_name)
+    """
     reply = None
+    model_used = LLM_CONFIG["model_name"]
 
     for attempt in range(2):
         try:
@@ -722,6 +738,13 @@ def _call_llm(messages: list) -> str:
                     temperature=0.3,
                 )
                 reply = response.choices[0].message.content
+                model_used = fm["model_name"]
+                # 记录降级事件
+                try:
+                    import requests
+                    requests.post("http://localhost:8001/api/stats/fallback", timeout=2)
+                except Exception:
+                    pass
                 break
             except Exception:
                 continue
@@ -729,7 +752,7 @@ def _call_llm(messages: list) -> str:
     if reply is None:
         reply = "抱歉，系统暂时繁忙，请稍后再试。如需紧急帮助，请点击「转人工客服」。"
 
-    return reply
+    return reply, model_used
 
 
 def general_reply(state: dict) -> dict:
@@ -738,6 +761,7 @@ def general_reply(state: dict) -> dict:
     history = state.get("history", [])
     kb_reference = state.get("kb_reference", "")
     chunk_reference = state.get("chunk_reference", "")
+    user_images = state.get("user_images", [])
 
     # ─ 更新多轮记忆 ──
     user_memory = _update_memory(state)
@@ -759,9 +783,21 @@ def general_reply(state: dict) -> dict:
     messages = [{"role": "system", "content": system_prompt}]
     for role, content in history[-6:]:
         messages.append({"role": "user" if role == "user" else "assistant", "content": content})
-    messages.append({"role": "user", "content": user_input})
+
+    # 多模态：有图片时用 content array 格式
+    if user_images:
+        content_parts = [{"type": "text", "text": user_input}]
+        for img_b64 in user_images:
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{img_b64}"}
+            })
+        messages.append({"role": "user", "content": content_parts})
+    else:
+        messages.append({"role": "user", "content": user_input})
 
     reply = None
+    model_used = LLM_CONFIG["model_name"]
 
     # 主模型调用（失败自动重试 1 次）
     for attempt in range(2):
@@ -795,7 +831,14 @@ def general_reply(state: dict) -> dict:
                     temperature=0.7,
                 )
                 reply = response.choices[0].message.content
+                model_used = fm["model_name"]
                 print("[模型降级] 备用模型成功")
+                # 记录降级事件
+                try:
+                    import requests
+                    requests.post("http://localhost:8001/api/stats/fallback", timeout=2)
+                except Exception:
+                    pass
                 break
             except Exception as e2:
                 print(f"[模型降级] 备用模型 {i+1} 也失败：{str(e2)[:50]}")
@@ -811,7 +854,7 @@ def general_reply(state: dict) -> dict:
     log_step("general_reply", user_input=user_input[:50], response=reply[:100], intent="general")
     print(f"[主Agent] general_reply | 问题：{user_input[:30]}...")
     print(f"[主Agent] 回答：{reply[:50]}...")
-    return {"response": reply, "intent": "general", "user_memory": user_memory}
+    return {"response": reply, "intent": "general", "user_memory": user_memory, "model_used": model_used}
 
 
 def evaluate_response(state: dict) -> dict:

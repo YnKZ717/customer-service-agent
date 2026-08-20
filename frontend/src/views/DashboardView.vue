@@ -41,6 +41,7 @@ interface DashboardData {
     llm_calls: number
     tickets_created: number
     troubleshoot_count: number
+    fallback_count: number
     kb_hit_rate: number
     total_days: number
   }
@@ -50,6 +51,7 @@ interface DashboardData {
     kb: number
     llm: number
     troubleshoot: number
+    fallback: number
     hit_rate: number
   }[]
   feedback_stats: {
@@ -66,7 +68,7 @@ const loading = ref(true)
 const cards = ref([
   { label: '总问答量', value: 0, icon: '💬', color: '#4CAF50' },
   { label: '知识库命中率', value: '0%', icon: '', color: '#2196F3' },
-  { label: '工单数', value: 0, icon: '', color: '#FF9800' },
+  { label: '模型降级', value: 0, icon: '️', color: '#FF5722' },
   { label: '满意度', value: '0', icon: '⭐', color: '#9C27B0' },
 ])
 
@@ -181,7 +183,7 @@ async function loadData() {
     // 更新指标卡片
     cards.value[0].value = json.summary.total_calls
     cards.value[1].value = json.summary.kb_hit_rate + '%'
-    cards.value[2].value = json.summary.tickets_created
+    cards.value[2].value = json.summary.fallback_count
     cards.value[3].value = json.feedback_stats.average > 0 ? json.feedback_stats.average.toFixed(1) : '—'
 
     // 更新图表1：每日趋势

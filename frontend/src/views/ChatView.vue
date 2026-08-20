@@ -17,7 +17,10 @@ interface Message {
   ticketId?: string
   id?: string  // 唯一 ID，用于反馈
   rated?: boolean  // 是否已评价
+  isGreeting?: boolean  // 是否开场白（不显示反馈）
+  hoveredRating?: number  // 悬停评分（临时）
   images?: string[]  // FAQ 命中的截图
+  uploadedImages?: string[]  // 用户上传的图片预览 URL
   isTroubleshooting?: boolean  // 是否在排查流程中
   troubleshootStep?: number    // 当前排查步骤
   timestamp?: Date  // 消息时间
@@ -26,7 +29,7 @@ interface Message {
 // ── 每次打开都初始化新对话 ──
 function loadChatHistory(): Message[] {
   return [
-    { role: 'assistant', content: '你好！我是 Neowow Studio 的智能客服助手。你可以问我关于账号、充值、会员套餐、视频生成、图片生成等问题，我会尽力帮你解决。' }
+    { role: 'assistant', content: '你好！我是 Neowow Studio 的智能客服助手。你可以问我关于账号、充值、会员套餐、视频生成、图片生成等问题，我会尽力帮你解决。', isGreeting: true }
   ]
 }
 
@@ -39,6 +42,8 @@ const pendingCount = ref(0)
 const chatContainer = ref<HTMLElement | null>(null)
 const apiCalls = ref(0)
 const kbHitRate = ref(0)
+const pendingImages = ref<{ base64: string; preview: string }[]>([])
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const quickQuestions = ['怎么充值积分', 'CodingPlan 是什么', '怎么使用智能体', '我要投诉']
 
@@ -58,13 +63,104 @@ watch(
   { immediate: true }
 )
 
-async function sendMessage(text: string) {
-  if (!text.trim() || loading.value) return
+// ── 图片上传相关 ──
+const MAX_IMAGE_SIZE = 1 * 1024 * 1024  // 1MB
+const MAX_DIMENSION = 1024  // 最大边长
 
-  // 添加用户消息
-  const userMsg: Message = { role: 'user', content: text, id: `msg-${Date.now()}`, timestamp: new Date() }
+function triggerFileInput() {
+  fileInputRef.value?.click()
+}
+
+/** 压缩图片：超过 1MB 或尺寸超过 1024px 时自动压缩 */
+function compressImage(file: File): Promise<{ base64: string; preview: string }> {
+  return new Promise((resolve, reject) => {
+    // 如果文件小于 1MB，直接返回
+    if (file.size <= MAX_IMAGE_SIZE) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        resolve({
+          base64: result.split(',')[1],
+          preview: result,
+        })
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+      return
+    }
+
+    // 需要压缩：用 canvas 缩放
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      // 计算缩放比例
+      if (width > height && width > MAX_DIMENSION) {
+        height = (height * MAX_DIMENSION) / width
+        width = MAX_DIMENSION
+      } else if (height > MAX_DIMENSION) {
+        width = (width * MAX_DIMENSION) / height
+        height = MAX_DIMENSION
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return reject(new Error('无法获取 canvas 上下文'))
+      ctx.drawImage(img, 0, 0, width, height)
+
+      // 用 JPEG 格式压缩（质量 0.8）
+      const compressed = canvas.toDataURL('image/jpeg', 0.8)
+      resolve({
+        base64: compressed.split(',')[1],
+        preview: compressed,
+      })
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+async function handleFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = input.files
+  if (!files) return
+
+  for (const file of Array.from(files)) {
+    if (!file.type.startsWith('image/')) continue
+    try {
+      const { base64, preview } = await compressImage(file)
+      pendingImages.value.push({ base64, preview })
+    } catch (err) {
+      console.error('图片压缩失败:', err)
+    }
+  }
+  // 清空 input，允许重复选择同一文件
+  input.value = ''
+}
+
+function removeImage(index: number) {
+  pendingImages.value.splice(index, 1)
+}
+
+async function sendMessage(text: string) {
+  if ((!text.trim() && pendingImages.value.length === 0) || loading.value) return
+
+  // 收集图片 base64
+  const images = pendingImages.value.map(img => img.base64)
+  const uploadedPreviews = pendingImages.value.map(img => img.preview)
+
+  // 添加用户消息（带图片）
+  const userMsg: Message = {
+    role: 'user',
+    content: text || '请看看这张图片',
+    id: `msg-${Date.now()}`,
+    timestamp: new Date(),
+    uploadedImages: uploadedPreviews.length > 0 ? uploadedPreviews : undefined,
+  }
   messages.value.push(userMsg)
   userInput.value = ''
+  pendingImages.value = []
   loading.value = true
 
   // 立即创建空回复（显示机器人头像 + 思考中动画）
@@ -81,7 +177,7 @@ async function sendMessage(text: string) {
     const resp = await fetch(`${API_BASE}/api/chat/stream`, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ user_input: text, history: chatHistory.value }),
+      body: JSON.stringify({ user_input: text, history: chatHistory.value, images }),
     })
 
     if (!resp.ok) {
@@ -94,7 +190,8 @@ async function sendMessage(text: string) {
     let fullResponse = ''
     let isTroubleshooting = false
     let troubleshootStep = 0
-    let images: string[] = []
+    let faqImages: string[] = []
+    let modelUsed = ''
 
     while (true) {
       const { done, value } = await reader!.read()
@@ -118,11 +215,14 @@ async function sendMessage(text: string) {
             // 第一条是元数据
             if (parsed.intent !== undefined && fullResponse === '') {
               if (parsed.kb_images && parsed.kb_images.length > 0) {
-                images = parsed.kb_images
+                faqImages = parsed.kb_images
               }
               if (parsed.is_troubleshooting) {
                 isTroubleshooting = true
                 troubleshootStep = parsed.troubleshoot_step
+              }
+              if (parsed.model_used) {
+                modelUsed = parsed.model_used
               }
               continue
             }
@@ -136,9 +236,10 @@ async function sendMessage(text: string) {
                 content: fullResponse,
                 id: replyId,
                 timestamp: messages.value[replyIndex].timestamp,
-                images: images.length > 0 ? images : undefined,
+                images: faqImages.length > 0 ? faqImages : undefined,
                 isTroubleshooting,
                 troubleshootStep: isTroubleshooting ? troubleshootStep : undefined,
+                modelUsed: modelUsed || undefined,
               }
               // 每 5 个字符滚动一次
               if (fullResponse.length % 5 === 0) {
@@ -304,6 +405,17 @@ function closeImagePreview() {
         <div class="message-avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
         <div class="message-content">
           <div class="message-bubble">
+            <!-- 用户上传的图片 -->
+            <div v-if="msg.uploadedImages && msg.uploadedImages.length" class="uploaded-images">
+              <img
+                v-for="(img, idx) in msg.uploadedImages"
+                :key="idx"
+                :src="img"
+                :alt="'上传图片 ' + (idx + 1)"
+                class="uploaded-image"
+                @click="previewImage = img"
+              />
+            </div>
             <p v-if="msg.content">{{ msg.content }}</p>
             <!-- 思考中动画（仅在内容为空且是助手消息时显示） -->
             <div v-else-if="msg.role === 'assistant'" class="thinking-dots">
@@ -312,6 +424,7 @@ function closeImagePreview() {
             </div>
             <p v-if="msg.ticketId" class="ticket-id">工单号：{{ msg.ticketId }}</p>
             <p v-if="msg.timestamp" class="message-time">{{ formatTime(msg.timestamp) }}</p>
+            <span v-if="msg.modelUsed" class="model-badge">{{ msg.modelUsed }}</span>
           </div>
           <!-- 排查状态指示器 -->
           <div v-if="msg.isTroubleshooting" class="troubleshoot-badge">
@@ -328,24 +441,22 @@ function closeImagePreview() {
               @click="openImagePreview(img)"
             />
           </div>
-          <!-- 反馈按钮（仅助手消息） -->
-          <div v-if="msg.role === 'assistant' && !msg.isTicket" class="feedback-buttons">
-            <button
-              v-if="!msg.rated"
-              @click="submitFeedback(msg, 5)"
-              class="feedback-btn"
-              title="有帮助"
-            >
-              👍
-            </button>
-            <button
-              v-if="!msg.rated"
-              @click="submitFeedback(msg, 1)"
-              class="feedback-btn"
-              title="没帮助"
-            >
-              👎
-            </button>
+          <!-- 反馈按钮（仅助手消息，且非开场白） -->
+          <div v-if="msg.role === 'assistant' && !msg.isTicket && !msg.isGreeting" class="feedback-buttons">
+            <template v-if="!msg.rated">
+              <button
+                v-for="star in 5"
+                :key="star"
+                @click="submitFeedback(msg, star)"
+                class="star-btn"
+                :class="{ active: (msg.hoveredRating || 0) >= star }"
+                @mouseenter="msg.hoveredRating = star"
+                @mouseleave="msg.hoveredRating = 0"
+                :title="star + ' 星'"
+              >
+                ★
+              </button>
+            </template>
             <span v-else class="feedback-thanks">感谢反馈 ✓</span>
           </div>
         </div>
@@ -353,8 +464,19 @@ function closeImagePreview() {
     </div>
 
     <!-- 输入区域 -->
-    <form class="input-area" role="form" aria-label="输入问题" @submit.prevent="sendMessage(userInput)">
+    <form class="input-area" role="form" aria-label="输入问题" @submit.prevent>
       <label for="chat-input" class="sr-only">输入你的问题</label>
+      <!-- 隐藏的文件选择器 -->
+      <input
+        ref="fileInputRef"
+        type="file"
+        accept="image/*"
+        multiple
+        class="hidden-file-input"
+        @change="handleFileSelect"
+      />
+      <!-- 图片上传按钮 -->
+      <button type="button" @click="triggerFileInput" class="upload-btn" :disabled="loading" title="上传图片" aria-label="上传图片">📎</button>
       <input
         id="chat-input"
         v-model="userInput"
@@ -364,10 +486,18 @@ function closeImagePreview() {
         :disabled="loading"
         aria-label="输入你的问题"
       />
-      <button type="submit" @click="sendMessage(userInput)" :disabled="loading || !userInput.trim()" class="send-btn" aria-label="发送消息">
+      <button type="button" @click="sendMessage(userInput)" :disabled="loading || (!userInput.trim() && pendingImages.length === 0)" class="send-btn" aria-label="发送消息">
         发送
       </button>
     </form>
+
+    <!-- 待发送图片预览 -->
+    <div v-if="pendingImages.length > 0" class="pending-images-preview">
+      <div v-for="(img, idx) in pendingImages" :key="idx" class="pending-image-item">
+        <img :src="img.preview" :alt="'待发送图片 ' + (idx + 1)" class="pending-image-thumb" />
+        <button type="button" @click="removeImage(idx)" class="remove-image-btn" aria-label="移除图片">✕</button>
+      </div>
+    </div>
 
     <!-- 底部统计 -->
     <div class="stats-bar" role="status" aria-label="统计信息">
@@ -543,6 +673,17 @@ function closeImagePreview() {
   color: rgba(255,255,255,0.7);
 }
 
+.model-badge {
+  display: inline-block;
+  font-size: 10px;
+  color: #888;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-top: 6px;
+  font-family: monospace;
+}
+
 /* 反馈按钮 */
 .message-content {
   display: flex;
@@ -556,25 +697,25 @@ function closeImagePreview() {
 
 .feedback-buttons {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   margin-top: 6px;
   align-items: center;
 }
 
-.feedback-btn {
+.star-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 18px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background 0.2s;
-  opacity: 0.6;
+  font-size: 20px;
+  color: #ddd;
+  padding: 2px 4px;
+  transition: color 0.15s, transform 0.15s;
 }
 
-.feedback-btn:hover {
-  background: #f0f0f0;
-  opacity: 1;
+.star-btn:hover,
+.star-btn.active {
+  color: #FFC107;
+  transform: scale(1.15);
 }
 
 .feedback-thanks {
@@ -754,5 +895,109 @@ function closeImagePreview() {
 
 .preview-close:hover {
   background: #f5f5f5;
+}
+
+/* 隐藏文件选择器 */
+.hidden-file-input {
+  display: none;
+}
+
+/* 图片上传按钮 */
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 22px;
+  color: #666;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+  color: #4CAF50;
+}
+
+.upload-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 待发送图片预览 */
+.pending-images-preview {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+
+.pending-image-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.pending-image-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+}
+
+.remove-image-btn:hover {
+  background: rgba(229, 57, 53, 0.9);
+}
+
+/* 用户上传的图片（在消息气泡中） */
+.uploaded-images {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.uploaded-image {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  object-fit: cover;
+}
+
+.uploaded-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 </style>

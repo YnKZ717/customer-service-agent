@@ -29,6 +29,8 @@ class AgentState(dict):
     troubleshoot_flow: str   # 当前排查流程 ID（如 "video_fail"）
     troubleshoot_step: int   # 当前排查步骤（0, 1, 2...）
     user_memory: dict        # 多轮记忆 {task_id, member_level, problem_type, ...}
+    model_used: str          # 实际使用的模型名称
+    user_images: list        # 用户上传的图片 base64 列表
 
 
 def build_graph():

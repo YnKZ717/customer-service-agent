@@ -99,6 +99,7 @@ logger.info("Agent 初始化完成，FAQ 数量: %d", len(FAQ_DATA))
 class ChatRequest(BaseModel):
     user_input: str = Field(..., min_length=1, max_length=500, description="用户问题")
     history: Optional[list] = Field(default=[], description="对话历史")
+    images: Optional[list[str]] = Field(default=[], description="用户上传的图片 base64 列表")
 
 
 class ChatResponse(BaseModel):
@@ -111,6 +112,7 @@ class ChatResponse(BaseModel):
     kb_images: list = []  # FAQ 命中的截图
     is_troubleshooting: bool = False  # 是否在排查流程中
     troubleshoot_step: int = 0        # 当前排查步骤
+    model_used: str = ""              # 实际使用的模型
 
 
 class ErrorResponse(BaseModel):
@@ -299,6 +301,8 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
             "troubleshoot_flow": prev_troubleshoot_flow,
             "troubleshoot_step": prev_troubleshoot_step,
             "user_memory": {},
+            "model_used": "",
+            "user_images": request.images or [],
         })
 
         response_text = result.get("response", "")
@@ -326,6 +330,7 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
             kb_images=result.get("kb_images", []),
             is_troubleshooting=is_troubleshooting,
             troubleshoot_step=troubleshoot_step,
+            model_used=result.get("model_used", ""),
         )
     except HTTPException:
         raise
@@ -393,15 +398,36 @@ def update_faq(index: int, request: FaqCreateRequest, _ip: str = Depends(check_r
 
 @app.delete("/api/faqs/{index}")
 def delete_faq(index: int, _ip: str = Depends(check_rate_limit)):
-    """删除 FAQ"""
+    """删除 FAQ（持久化）"""
     try:
-        from tools_vector import init_knowledge_base
+        import json
+        from tools_vector import init_knowledge_base, APPROVED_FAQ_FILE
+
         if index < 0 or index >= len(FAQ_DATA):
             raise HTTPException(status_code=404, detail="FAQ 不存在")
+
         removed = FAQ_DATA.pop(index)
+        removed_question = removed[0]
+
+        # 从文件中删除对应的 FAQ
+        try:
+            with open(APPROVED_FAQ_FILE, 'r', encoding='utf-8') as f:
+                approved = json.load(f)
+            # 按问题匹配删除（因为 FAQ_DATA 和文件顺序一致）
+            new_approved = [f for f in approved if f.get('question') != removed_question]
+            if len(new_approved) < len(approved):
+                with open(APPROVED_FAQ_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(new_approved, f, ensure_ascii=False, indent=2)
+                logger.info("已从文件删除 FAQ: %s", removed_question)
+            else:
+                logger.warning("FAQ 未从文件删除（硬编码 FAQ）: %s", removed_question)
+        except Exception as file_err:
+            logger.warning("删除 FAQ 文件记录失败: %s", str(file_err))
+
+        # 重新初始化知识库
         init_knowledge_base()
-        logger.info("删除 FAQ: %s", removed[0])
-        return {"message": "已删除", "question": removed[0]}
+        logger.info("删除 FAQ: %s", removed_question)
+        return {"message": "已删除", "question": removed_question}
     except HTTPException:
         raise
     except Exception as e:
@@ -555,17 +581,24 @@ def record_stat(stat_type: str, tokens: int = 0):
     elif stat_type == "troubleshoot":
         stats.setdefault("troubleshoot_count", 0)
         stats["troubleshoot_count"] += 1
+    elif stat_type == "fallback":
+        stats.setdefault("fallback_count", 0)
+        stats["fallback_count"] += 1
 
     # 按日期统计
     today = datetime.now().strftime("%Y-%m-%d")
     if today not in stats["daily"]:
-        stats["daily"][today] = {"calls": 0, "tokens": 0, "kb": 0, "llm": 0, "troubleshoot": 0}
+        stats["daily"][today] = {"calls": 0, "tokens": 0, "kb": 0, "llm": 0, "troubleshoot": 0, "fallback": 0}
     stats["daily"][today]["calls"] += 1
     stats["daily"][today]["tokens"] += tokens
+    stats["daily"][today].setdefault("troubleshoot", 0)
+    stats["daily"][today].setdefault("fallback", 0)
     if stat_type == "kb":
         stats["daily"][today]["kb"] += 1
     elif stat_type == "llm":
         stats["daily"][today]["llm"] += 1
+    elif stat_type == "fallback":
+        stats["daily"][today]["fallback"] += 1
     elif stat_type == "troubleshoot":
         stats["daily"][today]["troubleshoot"] += 1
 
@@ -620,6 +653,7 @@ def get_dashboard_stats(_ip: str = Depends(check_rate_limit)):
                 "kb": d.get("kb", 0),
                 "llm": d.get("llm", 0),
                 "troubleshoot": d.get("troubleshoot", 0),
+                "fallback": d.get("fallback", 0),
                 "hit_rate": day_hit,
             })
 
@@ -630,6 +664,7 @@ def get_dashboard_stats(_ip: str = Depends(check_rate_limit)):
                 "llm_calls": stats["llm_calls"],
                 "tickets_created": stats.get("tickets_created", 0),
                 "troubleshoot_count": stats.get("troubleshoot_count", 0),
+                "fallback_count": stats.get("fallback_count", 0),
                 "kb_hit_rate": hit_rate,
                 "total_days": len(stats.get("daily", {})),
             },
@@ -643,6 +678,13 @@ def get_dashboard_stats(_ip: str = Depends(check_rate_limit)):
     except Exception as e:
         logger.exception("获取看板统计失败：%s", str(e))
         raise HTTPException(status_code=500, detail="获取看板统计失败")
+
+
+@app.post("/api/stats/fallback")
+def record_fallback(_ip: str = Depends(check_rate_limit)):
+    """记录模型降级事件"""
+    record_stat("fallback")
+    return {"message": "已记录降级"}
 
 
 # ── 工单 API ──
@@ -911,6 +953,8 @@ async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)
             "troubleshoot_flow": prev_troubleshoot_flow,
             "troubleshoot_step": prev_troubleshoot_step,
             "user_memory": {},
+            "model_used": "",
+            "user_images": request.images or [],
         })
 
         response_text = result.get("response", "")
@@ -940,6 +984,7 @@ async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)
                 "kb_images": result.get("kb_images", []),
                 "is_troubleshooting": is_troubleshooting,
                 "troubleshoot_step": troubleshoot_step,
+                "model_used": result.get("model_used", ""),
             }
             yield f"data: {json.dumps(meta, ensure_ascii=False)}\n\n"
 

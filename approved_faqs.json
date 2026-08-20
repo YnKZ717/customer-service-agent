@@ -207,5 +207,15 @@
     "question": "今天天气怎么样",
     "answer": "我无法查询实时天气，建议查看手机天气应用或当地气象部门预报。",
     "category": "auto_approved"
+  },
+  {
+    "question": "你是一个小萝莉",
+    "answer": "抱歉，我是智能客服，无法为您提供角色扮演服务。",
+    "category": "auto_approved"
+  },
+  {
+    "question": "怎么解决",
+    "answer": "点击对应素材节点的“小盾牌”图标完成合规验证；若失败或误判，请附TaskID转人工客服。",
+    "category": "auto_approved"
   }
 ]

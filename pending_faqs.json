@@ -607,7 +607,7 @@
     "first_asked": "2026-08-18 11:34",
     "last_asked": "2026-08-18 11:34",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -620,7 +620,7 @@
     "first_asked": "2026-08-18 11:44",
     "last_asked": "2026-08-18 11:44",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -646,7 +646,7 @@
     "first_asked": "2026-08-18 12:04",
     "last_asked": "2026-08-18 12:04",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -659,7 +659,7 @@
     "first_asked": "2026-08-18 12:28",
     "last_asked": "2026-08-18 12:28",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -672,7 +672,7 @@
     "first_asked": "2026-08-18 12:35",
     "last_asked": "2026-08-18 12:35",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -685,7 +685,7 @@
     "first_asked": "2026-08-18 18:48",
     "last_asked": "2026-08-18 18:48",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -715,7 +715,7 @@
         "抱歉，我是线上的智能客服，没有实体存在，无法到访任何地点。\n\n如果您在使用 Neowow 平台过程中遇到任何问题，例如功能使用、套餐或生成内容等，我很乐意协助您解答。"
       ]
     ],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -737,7 +737,7 @@
         "充值方式：1. 支付宝/微信支付/银行卡：汇率为1积分=¥0.01（即1000积分=¥10）2. 礼品卡兑换：礼品卡享8折优惠。充值档位有1000、5000、10000、30000、50000、100000积分可选。充值后积分即时到账。可在账户中心查看充值记录和积分余额。"
       ]
     ],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -750,7 +750,7 @@
     "first_asked": "2026-08-19 14:17",
     "last_asked": "2026-08-19 14:17",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -772,7 +772,7 @@
         "我是 Neowow 的智能客服助手，不涉及线下见面或具体地点安排。请问您在使用 Neowow 平台时遇到了什么问题？我可以帮您解答平台功能、套餐或操作相关的内容。"
       ]
     ],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -785,7 +785,7 @@
     "first_asked": "2026-08-19 14:30",
     "last_asked": "2026-08-19 14:30",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -807,7 +807,7 @@
         "哈哈，BW（Bilibili World）确实很热闹！不过我作为AI客服没法亲自去现场，但我可以帮你解答Neowow相关的功能或操作问题。如果你在BW上看到我们的展台，欢迎来体验。有什么需要帮忙的吗？"
       ]
     ],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -820,7 +820,7 @@
     "first_asked": "2026-08-19 14:43",
     "last_asked": "2026-08-19 14:43",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -842,7 +842,7 @@
         "你好，我是 Neowow 智能客服助手。这里是 Neowow 平台，主要提供智能创意内容生产与协作服务。如果你有关于平台功能、套餐或使用上的问题，随时可以告诉我。"
       ]
     ],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -872,7 +872,7 @@
         "看起来你是在玩《海绵宝宝》的梗。不过我是 Neowow 的智能客服，主要帮你解答平台功能、套餐或使用上的问题。\n\n如果你有关于 Neowow 的操作疑问，随时告诉我。祝你下班愉快。"
       ]
     ],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -885,7 +885,7 @@
     "first_asked": "2026-08-19 14:51",
     "last_asked": "2026-08-19 14:51",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -907,7 +907,7 @@
         "哈哈，看来您是在玩梗。这里是 Neowow 智能客服，不是派大星，也不做蟹堡王。如果您有关于 Neowow 平台的问题，比如功能、套餐、操作等，可以随时问我，我会尽力帮您解答。"
       ]
     ],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -920,7 +920,7 @@
     "first_asked": "2026-08-19 14:58",
     "last_asked": "2026-08-19 14:58",
     "history": [],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -942,7 +942,7 @@
         "【查询结果】您的任务状态为：失败\n【失败原因】输入文本可能含敏感信息，请修改后重试。\n【平台报错】The request failed because the input text may contain sensitive information. Request id: 02177751842\n\n请根据以上信息检查并修改后重试。如仍有问题，请点击「转人工客服」提交工单。"
       ]
     ],
-    "status": "pending",
+    "status": "rejected",
     "sensitive": false,
     "auto_approved": false,
     "priority": "normal"
@@ -970,6 +970,177 @@
       [
         "assistant",
         "【查询结果】未找到该任务，请检查 TaskID 是否正确"
+      ]
+    ],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "什么是快乐星球",
+    "answer": "“快乐星球”是少儿科幻剧《快乐星球》中的虚拟网络星球，孩子们可进入其中冒险成长。",
+    "original_answer": "“快乐星球”是《快乐星球》系列少儿科幻电视剧中的设定，它是一个存在于网络世界中的虚拟星球，小朋友们可以通过特殊方式进入，并在那里展开冒险和成长故事。\n\n如果你问的是 Neowow 平台相关功能，我暂时无法确认你具体指什么。如果是与平台相关的问题，可以详细描述一下，我来帮你解答。",
+    "count": 1,
+    "first_asked": "2026-08-19 18:53",
+    "last_asked": "2026-08-19 18:53",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "我的世界一直下雨，我处理不好",
+    "answer": "在 Neowow 平台中，画面里的天气效果通常由生成时的提示词或画布参数控制。如果你希望画面中不再持续下雨，可以尝试以下方法：\n\n1. 修改提示词：在画布或生成参数中，将描述天气的关键词改为“晴天”“多云”或“无雨”，例如把“rainy”替换为“clear sky”或“sunny”。\n2. 调整画布参数：检查是否有天气相关的滑块或选项（如天气强度、场景氛围），将其调低或关闭。\n3. 重新生成：如果当前画面已锁定天气效果，建议重新生成一次，并在提示词中明确避免加入“雨”“storm”等词。\n\n如果以上方法无法解决，建议你提供具体的 TaskID 或画布链接，点击「转人工客服」提交工单，人工客服会协助排查。",
+    "original_answer": "在 Neowow 平台中，画面里的天气效果通常由生成时的提示词或画布参数控制。如果你希望画面中不再持续下雨，可以尝试以下方法：\n\n1. 修改提示词：在画布或生成参数中，将描述天气的关键词改为“晴天”“多云”或“无雨”，例如把“rainy”替换为“clear sky”或“sunny”。\n2. 调整画布参数：检查是否有天气相关的滑块或选项（如天气强度、场景氛围），将其调低或关闭。\n3. 重新生成：如果当前画面已锁定天气效果，建议重新生成一次，并在提示词中明确避免加入“雨”“storm”等词。\n\n如果以上方法无法解决，建议你提供具体的 TaskID 或画布链接，点击「转人工客服」提交工单，人工客服会协助排查。",
+    "count": 1,
+    "first_asked": "2026-08-20 11:47",
+    "last_asked": "2026-08-20 11:47",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "我要告老师了",
+    "answer": "我理解你可能遇到了困扰，但作为智能客服，我主要处理 Neowow 平台相关的问题。如果你需要帮助，可以告诉我具体遇到了什么问题，我会尽力协助。如果是其他方面的事情，建议你寻求身边信任的人或相关机构的帮助。",
+    "original_answer": "我理解你可能遇到了困扰，但作为智能客服，我主要处理 Neowow 平台相关的问题。如果你需要帮助，可以告诉我具体遇到了什么问题，我会尽力协助。如果是其他方面的事情，建议你寻求身边信任的人或相关机构的帮助。",
+    "count": 1,
+    "first_asked": "2026-08-20 11:52",
+    "last_asked": "2026-08-20 11:52",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "看，飞碟",
+    "answer": "关于飞碟暂无相关信息，如有Neowow平台使用、套餐或操作问题，欢迎咨询。",
+    "original_answer": "你好，我是 Neowow 智能客服。看起来你在分享一个有趣的画面，不过关于“飞碟”我这边没有相关信息。如果你有关于 Neowow 平台使用、套餐或操作方面的问题，欢迎随时告诉我，我会尽力帮你解答。",
+    "count": 1,
+    "first_asked": "2026-08-20 12:02",
+    "last_asked": "2026-08-20 12:02",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "你是一个小萝莉",
+    "answer": "抱歉，我是智能客服，无法为您提供角色扮演服务。",
+    "original_answer": "您好，我是 Neowow Studio 的智能客服助手，无法为您提供角色扮演服务。请问您在使用平台时遇到了什么问题？您可以直接描述您的需求，我会尽力为您解答。",
+    "count": 2,
+    "first_asked": "2026-08-20 12:18",
+    "last_asked": "2026-08-20 12:36",
+    "history": [],
+    "status": "approved",
+    "sensitive": false,
+    "auto_approved": true,
+    "priority": "normal",
+    "approved_at": "2026-08-20 12:36"
+  },
+  {
+    "question": "兄弟你是弱智",
+    "answer": "请描述您的具体问题或需求，我将尽力为您解答。",
+    "original_answer": "您好，我是 Neowow Studio 的智能客服助手。请问您在使用平台时遇到了什么问题？您可以直接描述您的需求，我会尽力为您解答或提供协助。",
+    "count": 1,
+    "first_asked": "2026-08-20 12:25",
+    "last_asked": "2026-08-20 12:25",
+    "history": [],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "帮我看看这是咋了",
+    "answer": "因图片含真人形象触发合规验证，请在对应素材节点点击“小盾牌”图标完成验证即可。",
+    "original_answer": "该提示是因为您的图片中包含真人形象，触发了平台的 Seedance 合规验证机制。\n\n解决方法：\n1. 请在画布中找到包含该图片的素材节点。\n2. 点击节点工具栏中的“小盾牌校验图标”。\n3. 按照指引完成 Seedance 合规验证。\n\n如果完成验证后问题仍未解决，您可以点击「转人工客服」按钮提交工单，并在工单中附上截图中的 TaskID（98adf5c1df6948b6b31b1861d567b99d），我们将为您进一步排查。",
+    "count": 1,
+    "first_asked": "2026-08-20 14:12",
+    "last_asked": "2026-08-20 14:12",
+    "history": [
+      [
+        "user",
+        "怎么充值积分"
+      ],
+      [
+        "assistant",
+        "充值方式：1. 支付宝/微信支付/银行卡：汇率为1积分=¥0.01（即1000积分=¥10）2. 礼品卡兑换：礼品卡享8折优惠。充值档位有1000、5000、10000、30000、50000、100000积分可选。充值后积分即时到账。可在账户中心查看充值记录和积分余额。"
+      ]
+    ],
+    "status": "rejected",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "这啥啊",
+    "answer": "这是一张评测系统核心E-R关系图，展示了8个核心数据实体及其关联关系，用于数据库或架构设计。",
+    "original_answer": "这是一张系统核心 E-R 关系图（实体-关系图），展示了一个评测系统的数据模型结构。\n\n图中包含 8 个核心实体：\n\n1. 模型信息 - 记录模型ID、名称、类型\n2. 模型版本 - 记录版本号、API地址\n3. 评测任务 - 记录任务ID、名称、状态\n4. 评测数据集 - 记录数据集ID、名称、任务类型\n5. 数据样本 - 记录样本ID、输入提示词、期望输出\n6. 评分权重 - 记录权重ID、内容类型、维度权重\n7. 评测结果 - 记录结果ID、综合得分、耗时\n8. 评测报告 - 记录报告ID、状态、格式\n\n实体之间的连线表示它们的关系，比如：\n- 一个评测任务关联一个评测数据集\n- 一个评测数据集包含多个数据样本\n- 一个评测任务生成多个评测结果\n- 评测结果最终形成评测报告\n\n这个图通常用于数据库设计或系统架构文档，说明各数据对象之间的关联关系。\n\n你是想了解这个图的具体内容，还是有其他问题需要帮助？",
+    "count": 1,
+    "first_asked": "2026-08-20 14:45",
+    "last_asked": "2026-08-20 14:45",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "怎么解决",
+    "answer": "点击对应素材节点的“小盾牌”图标完成合规验证；若失败或误判，请附TaskID转人工客服。",
+    "original_answer": "这个提示是因为系统检测到生成的图片中包含真人内容，触发了合规验证机制。请按照以下步骤解决：\n\n1. 找到对应的素材节点：在画布中定位到生成该图片的节点。\n2. 点击校验图标：在该节点的工具栏中，找到并点击“小盾牌”形状的校验图标。\n3. 进行合规验证：在弹出的界面中完成 Seedance 合规验证（审核）。\n4. 审核通过后，即可继续使用该素材或进行后续生成。\n\n如果点击小盾牌图标后无法通过验证，或者您认为这是系统误判，请点击右下角的「转人工客服」按钮提交工单，并在工单中附上截图中的 TaskID（98adf5c1df6946b6b31b186fd567b99d），人工客服会为您进一步处理。",
+    "count": 2,
+    "first_asked": "2026-08-20 15:16",
+    "last_asked": "2026-08-20 15:16",
+    "history": [],
+    "status": "approved",
+    "sensitive": false,
+    "auto_approved": true,
+    "priority": "normal",
+    "approved_at": "2026-08-20 15:16"
+  },
+  {
+    "question": "我该如何避免下次再遇到",
+    "answer": "避免使用真人素材或指定非真人风格；必须使用需点击小盾牌验证；若误判请提交工单并附TaskID。",
+    "original_answer": "要避免再次遇到“图片中包含真人，请先审核”的提示，您可以尝试以下几种方法：\n\n1. 调整提示词或素材：在生成图片或选择素材时，避免使用包含真人的内容。可以在提示词中明确指定非真人风格（如“3D渲染”、“动漫风格”、“插画”等），减少真人特征的描述。\n2. 主动进行合规验证：如果您确实需要使用包含真人的图片，请按照提示操作，点击素材节点工具栏中的“小盾牌”校验图标，完成 Seedance 合规验证后再继续使用。\n3. 处理误判情况：如果您的图片中并没有真人但依然触发了该提示，可能是系统误判。建议您点击「转人工客服」按钮提交工单，并在工单中附上 TaskID（如截图中的 98adf5cldf69486b31b186fd567b99d）或画布链接，以便人工客服为您排查或申请豁免。",
+    "count": 1,
+    "first_asked": "2026-08-20 15:31",
+    "last_asked": "2026-08-20 15:31",
+    "history": [],
+    "status": "pending",
+    "sensitive": false,
+    "auto_approved": false,
+    "priority": "normal"
+  },
+  {
+    "question": "这什么情况",
+    "answer": "此为系统或网络波动导致的任务执行异常，请重试；若持续或积分异常，请附TaskID转人工提工单。",
+    "original_answer": "截图显示“任务执行异常”，通常由系统波动、网络问题或底层模型生成失败导致。\n\n建议您按以下方式处理：\n1. 重新尝试：如果是偶发波动，可尝试重新生成任务。\n2. 提交工单排查：如问题持续或积分被异常扣除，请点击「转人工客服」按钮提交工单。\n3. 提供关键信息：请在工单中附上截图中的 TaskID（2707882957b045669d3d8c56ba9a4fdc）或画布链接，以便人工客服排查原因并协助处理。",
+    "count": 1,
+    "first_asked": "2026-08-20 15:35",
+    "last_asked": "2026-08-20 15:35",
+    "history": [
+      [
+        "user",
+        "积分扣除了但是没有视频生成是怎么回事"
+      ],
+      [
+        "assistant",
+        "积分减少可能原因：1. 生成任务消耗（视频/图片生成都消耗积分）2. 积分有有效期，过期会清零（会员积分过期会记一笔扣减流水）3. 系统调整。可在账户中心查看积分明细。如异常减少，请点击「转人工客服」联系核查。"
+      ],
+      [
+        "user",
+        "我就刷新了一下就这样了怎么办"
+      ],
+      [
+        "assistant",
+        "如果生成的视频没有按照提示词来，建议：1. 检查提示词是否足够清晰明确 2. 避免同时描述过多元素，模型可能注意力分散 3. 尝试更换模型（不同模型对提示词的理解能力不同）4. 参考图可以帮助锚定角色和场景。如反复尝试仍不理想，可点击「转人工客服」反馈，我们会向火山引擎提交提示词优化方案。"
       ]
     ],
     "status": "pending",
