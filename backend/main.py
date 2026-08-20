@@ -674,6 +674,7 @@ def get_dashboard_stats(_ip: str = Depends(check_rate_limit)):
                 "average": fb_avg,
                 "distribution": fb_dist,
             },
+            "ab_test": get_experiment_results(),
         }
     except Exception as e:
         logger.exception("获取看板统计失败：%s", str(e))

@@ -172,6 +172,70 @@ const feedbackChartData = ref({
   ],
 })
 
+// ── 图表4：A/B 测试对比 ─────────────────────────────────
+const abChartOptions = ref({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: true, position: 'top' as const },
+    title: { display: false },
+  },
+  scales: {
+    y: { beginAtZero: true, title: { display: true, text: '平均评分' }, max: 5 },
+    x: { title: { display: true, text: '策略组' } },
+  },
+})
+
+const abChartData = ref({
+  labels: [] as string[],
+  datasets: [
+    {
+      label: '调用次数',
+      data: [] as number[],
+      backgroundColor: 'rgba(76, 175, 80, 0.6)',
+      borderColor: '#4CAF50',
+      borderWidth: 1,
+      yAxisID: 'y',
+    },
+    {
+      label: '平均评分',
+      data: [] as number[],
+      backgroundColor: 'rgba(33, 150, 243, 0.6)',
+      borderColor: '#2196F3',
+      borderWidth: 1,
+      yAxisID: 'y1',
+    },
+  ],
+})
+
+const abChartOptionsDual = ref({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: true, position: 'top' as const },
+    title: { display: false },
+  },
+  scales: {
+    y: {
+      type: 'linear' as const,
+      display: true,
+      position: 'left' as const,
+      beginAtZero: true,
+      title: { display: true, text: '调用次数' },
+    },
+    y1: {
+      type: 'linear' as const,
+      display: true,
+      position: 'right' as const,
+      beginAtZero: true,
+      max: 5,
+      title: { display: true, text: '平均评分' },
+      grid: { drawOnChartArea: false },
+    },
+    x: { title: { display: true, text: '策略组' } },
+  },
+})
+
 // ── 加载数据 ──────────────────────────────────────────
 async function loadData() {
   loading.value = true
@@ -206,6 +270,14 @@ async function loadData() {
       dist[4] || 0,
       dist[5] || 0,
     ]
+
+    // 更新图表 4：A/B 测试
+    if (json.ab_test && json.ab_test.by_strategy) {
+      const strategies = Object.keys(json.ab_test.by_strategy)
+      abChartData.value.labels = strategies.map(s => `策略 ${s}`)
+      abChartData.value.datasets[0].data = strategies.map(s => json.ab_test.by_strategy[s].count)
+      abChartData.value.datasets[1].data = strategies.map(s => json.ab_test.by_strategy[s].avg_rating || 0)
+    }
   } catch {
     // ignore
   } finally {
@@ -272,6 +344,22 @@ onMounted(() => {
             暂无反馈数据
           </div>
         </div>
+
+      <!-- 图表 4：A/B 测试对比 -->
+      <div class="charts-row single">
+        <div class="chart-card">
+          <h3 class="chart-title">🔬 A/B 测试策略对比</h3>
+          <div class="chart-container">
+            <Bar :data="abChartData" :options="abChartOptionsDual" />
+          </div>
+          <div class="feedback-summary" v-if="data.ab_test && data.ab_test.total > 0">
+            共 {{ data.ab_test.total }} 次实验
+          </div>
+          <div class="feedback-summary" v-else>
+            暂无 A/B 测试数据
+          </div>
+        </div>
+      </div>
       </div>
 
       <!-- 每日明细表 -->
