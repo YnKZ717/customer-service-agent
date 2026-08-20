@@ -1,4 +1,19 @@
-"""节点定义 — 客服Agent的每个处理步骤"""
+"""节点定义 — 客服Agent的每个处理步骤
+
+## 主流程说明
+1. classify_intent: 根据关键词匹配用户意图
+2. answer_from_kb: 尝试从 FAQ 知识库找答案
+3. chunk_search_node: 知识库没找到，查 Chunk 文档片段
+4. general_reply: 大模型兜底回答（支持多模态图片）
+5. troubleshoot: 故障排查流程（多轮引导）
+6. evaluate_response: 副 Agent 评估回答质量并修正
+7. handle_human: 转人工客服
+
+## 模型降级机制
+- 主模型失败时自动重试 1 次
+- 重试仍失败则切换备用模型（fallback_clients）
+- 降级事件自动记录到 stats.json
+"""
 from tools_vector import search_knowledge_base, save_pending_faq, FAQ_DATA
 from tools_chunk import search_chunks
 from ticket_utils import create_ticket, transfer_to_human
