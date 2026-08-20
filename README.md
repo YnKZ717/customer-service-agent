@@ -4,22 +4,43 @@
 
 ## 功能特性
 
+### 核心对话
 - **智能对话** — FAQ 知识库混合搜索（关键词 + 向量）+ 大模型兜底回答
-- **多轮引导式故障排查** — 结构化决策树 + LLM 引导追问，支持 TaskID 自动查询
-- **Tool Call** — 排查过程中自动调用工具查询任务状态、积分余额、会员信息
-- **双 Agent 协作** — 主 Agent 生成回答，副 Agent 评估质量并自动修正
+- **多轮引导式故障排查** — 9 种排查流程（超分/支付/技能/画布等）+ LLM 引导追问
+- **Tool Call** — 排查中自动调用工具查询任务状态、积分余额、会员信息
+- **双 Agent 协作** — 主 Agent 生成，副 Agent 评估并自动修正（准确性/完整性/语气/安全）
 - **自动 FAQ 沉淀** — 新问题自动记录，相似度去重，高频问题自动通过
 - **工单管理** — 创建/回复/分页/搜索/删除
-- **测试-修复闭环** — 17 条自动测试用例 + LLM 自动分析失败原因 + 自动生成代码补丁
+- **自动识别误伤** — 检测平台误伤并引导人工复核
+- **多模态图片上传** — 用户可上传图片，模型识别截图内容后回答
+- **五星评分** — 用户对每次回答进行 1-5 星评价
+
+### 数据看板
+- **指标卡片** — 总问答量、知识库命中率、模型降级次数、满意度
+- **每日趋势图** — 知识库 vs LLM 调用量折线图
+- **堆叠柱状图** — 知识库 vs LLM 每日分布
+- **满意度分布** — 1-5 星评分柱状图
+- **A/B 测试对比** — 策略分组调用次数 + 平均评分双轴图
+- **每日明细表** — 调用/知识库/LLM/排查/命中率一览
+
+### 管理功能
+- **FAQ 管理** — 增删改查，删除持久化到文件
+- **工单管理** — 全生命周期管理
+- **管理员看板** — admin 角色可见数据看板
+
+### 稳定性
+- **模型降级** — 主模型失败自动切换备用模型，降级事件自动记录
+- **图片压缩** — 超过 1MB 自动压缩到 1024px
+- **多模型支持** — DeepSeek / 阿里云 DashScope / OpenAI / Ollama
 
 ## 技术栈
 
 | 层面 | 技术 |
 |------|------|
 | 后端 | Python 3.12, FastAPI, LangGraph |
-| 前端 | Vue3, TypeScript, Vite |
+| 前端 | Vue3, TypeScript, Vite, Chart.js |
 | 向量库 | ChromaDB, text2vec-base-chinese |
-| 大模型 | OpenAI 兼容接口（DeepSeek/OpenAI/Ollama/阿里云等，支持多模型降级） |
+| 大模型 | OpenAI 兼容接口（DeepSeek/阿里云 DashScope/OpenAI/Ollama 等，支持多模型降级） |
 | 认证 | JWT (PyJWT) |
 
 ## 项目结构
@@ -30,18 +51,21 @@
 │   └── main.py              # FastAPI 服务入口
 ├── frontend/
 │   └── src/views/
-│       ├── ChatView.vue      # 对话界面
+│       ├── ChatView.vue      # 对话界面（含图片上传 + 五星评分）
 │       ├── TicketsView.vue   # 工单管理
-│       └── FaqView.vue       # FAQ 管理
+│       ├── AdminView.vue     # FAQ 管理
+│       └── DashboardView.vue # 数据看板（admin 可见）
 ├── graph.py                  # LangGraph 工作流定义
-── nodes.py                  # 各节点逻辑（含主副 Agent）
-├── troubleshoot_flows.py     # 排查流程决策树
+├── nodes.py                  # 各节点逻辑（含主副 Agent）
+├── troubleshoot_flows.py     # 排查流程决策树（9 种场景）
 ├── tools_vector.py           # 知识库搜索（关键词 + 向量）
+├── tools_chunk.py            # Chunk 文档片段搜索
 ├── mock_tools.py             # 模拟工具（任务/积分/会员查询）
-── agent_logger.py           # 结构化日志
-── test_agent.py             # 测试 Agent（17 条用例）
-├── auto_fix.py               # 修复 Agent（LLM 分析 + 自动补丁）
-├── run_loop.py               # 闭环脚本（测试→修复→再测）
+├── ab_test.py                # A/B 测试模块
+├── agent_logger.py           # 结构化日志
+├── ticket_utils.py           # 工单工具
+├── auth.py                   # JWT 认证
+├── config.py                 # 模型配置
 └── approved_faqs.json        # 知识库
 ```
 
@@ -77,7 +101,7 @@ cp ../.env.example ../.env
 | DeepSeek | https://api.deepseek.com/v1 | deepseek-chat |
 | OpenAI | https://api.openai.com/v1 | gpt-4o |
 | 本地 Ollama | http://localhost:11434/v1 | llama3 |
-| 阿里云 DashScope | https://dashscope.aliyuncs.com/compatible-mode/v1 | qwen-max |
+| 阿里云 DashScope | https://dashscope.aliyuncs.com/compatible-mode/v1 | qwen3.7-plus |
 
 编辑 `.env` 文件，填入对应的 API Key 和 BASE_URL 即可。
 
