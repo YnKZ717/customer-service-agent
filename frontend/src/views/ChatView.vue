@@ -3,11 +3,13 @@ import { ref, nextTick } from 'vue'
 
 const API_BASE = 'http://localhost:8001'
 
-// 从 localStorage 获取 Token
-const token = localStorage.getItem('token')
-const headers = {
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${token}`,
+// 动态获取 Token（每次请求时读取，避免组件加载时 token 尚未写入）
+function getHeaders(): Record<string, string> {
+  const token = localStorage.getItem('token') || ''
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  }
 }
 
 interface Message {
@@ -23,6 +25,8 @@ interface Message {
   uploadedImages?: string[]  // 用户上传的图片预览 URL
   isTroubleshooting?: boolean  // 是否在排查流程中
   troubleshootStep?: number    // 当前排查步骤
+  troubleshootFlowId?: string  // 当前排查流程 ID
+  troubleshootOptions?: string[]  // 排查步骤的预设选项
   timestamp?: Date  // 消息时间
 }
 
@@ -44,6 +48,9 @@ const apiCalls = ref(0)
 const kbHitRate = ref(0)
 const pendingImages = ref<{ base64: string; preview: string }[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const chatInputRef = ref<HTMLInputElement | null>(null)
+const currentOptions = ref<string[]>([])  // 当前排查步骤的选项，显示在输入框上方
+const wasTroubleshooting = ref(false)  // 跟踪上一轮是否是排查状态
 
 const quickQuestions = ['怎么充值积分', 'CodingPlan 是什么', '怎么使用智能体', '我要投诉']
 
@@ -143,6 +150,20 @@ function removeImage(index: number) {
   pendingImages.value.splice(index, 1)
 }
 
+function handleOptionClick(option: string) {
+  currentOptions.value = []  // 清空选项
+  sendMessage(option)
+}
+
+function handleExitTroubleshoot() {
+  currentOptions.value = []
+  sendMessage("退出排查")
+}
+
+function focusInput() {
+  chatInputRef.value?.focus()
+}
+
 async function sendMessage(text: string) {
   if ((!text.trim() && pendingImages.value.length === 0) || loading.value) return
 
@@ -176,7 +197,7 @@ async function sendMessage(text: string) {
   try {
     const resp = await fetch(`${API_BASE}/api/chat/stream`, {
       method: 'POST',
-      headers: headers,
+      headers: getHeaders(),
       body: JSON.stringify({ user_input: text, history: chatHistory.value, images }),
     })
 
@@ -190,6 +211,8 @@ async function sendMessage(text: string) {
     let fullResponse = ''
     let isTroubleshooting = false
     let troubleshootStep = 0
+    let troubleshootFlowId = ''
+    let troubleshootOptions: string[] = []
     let faqImages: string[] = []
     let modelUsed = ''
 
@@ -220,6 +243,14 @@ async function sendMessage(text: string) {
               if (parsed.is_troubleshooting) {
                 isTroubleshooting = true
                 troubleshootStep = parsed.troubleshoot_step
+                troubleshootFlowId = parsed.troubleshoot_flow || ''
+                troubleshootOptions = parsed.troubleshoot_options || []
+                // 更新输入框上方的选项
+                currentOptions.value = [...troubleshootOptions]
+              } else {
+                // 非排查状态，清空选项
+                isTroubleshooting = false
+                currentOptions.value = []
               }
               if (parsed.model_used) {
                 modelUsed = parsed.model_used
@@ -239,6 +270,8 @@ async function sendMessage(text: string) {
                 images: faqImages.length > 0 ? faqImages : undefined,
                 isTroubleshooting,
                 troubleshootStep: isTroubleshooting ? troubleshootStep : undefined,
+                troubleshootFlowId: isTroubleshooting && troubleshootFlowId ? troubleshootFlowId : undefined,
+                troubleshootOptions: isTroubleshooting && troubleshootOptions.length > 0 ? troubleshootOptions : undefined,
                 modelUsed: modelUsed || undefined,
               }
               // 每 5 个字符滚动一次
@@ -255,9 +288,18 @@ async function sendMessage(text: string) {
 
     // 添加到历史记录
     chatHistory.value.push(['user', text])
-    const historyContent = isTroubleshooting
-      ? ` 故障排查中（第${troubleshootStep + 1}步）\n${fullResponse}`
-      : fullResponse
+    let historyContent = fullResponse
+
+    if (isTroubleshooting) {
+      // 正常排查状态
+      historyContent = ` 故障排查中（第${troubleshootStep + 1}步|flow:${troubleshootFlowId}）\n${fullResponse}`
+      wasTroubleshooting.value = true
+    } else if (wasTroubleshooting.value) {
+      // 排查结束（之前是排查状态，现在不是）
+      historyContent = ` 排查结束\n${fullResponse}`
+      wasTroubleshooting.value = false
+    }
+
     chatHistory.value.push(['assistant', historyContent])
 
     refreshStats()
@@ -296,7 +338,7 @@ async function transferToHuman() {
   try {
     const resp = await fetch(`${API_BASE}/api/tickets`, {
       method: 'POST',
-      headers: headers,
+      headers: getHeaders(),
       body: JSON.stringify({
         user_input: lastMessage,
         history: chatHistory.value,
@@ -339,15 +381,15 @@ function scrollToBottom() {
 
 async function refreshStats() {
   try {
-    const faqResp = await fetch(`${API_BASE}/api/faqs`, { headers })
+    const faqResp = await fetch(`${API_BASE}/api/faqs`, { headers: getHeaders() })
     const faqData = await faqResp.json()
     faqCount.value = faqData.total
 
-    const pendingResp = await fetch(`${API_BASE}/api/pending`, { headers })
+    const pendingResp = await fetch(`${API_BASE}/api/pending`, { headers: getHeaders() })
     const pendingData = await pendingResp.json()
     pendingCount.value = pendingData.total
 
-    const statsResp = await fetch(`${API_BASE}/api/stats`, { headers })
+    const statsResp = await fetch(`${API_BASE}/api/stats`, { headers: getHeaders() })
     const statsData = await statsResp.json()
     apiCalls.value = statsData.total_calls || 0
     kbHitRate.value = statsData.kb_hit_rate || 0
@@ -362,7 +404,7 @@ async function submitFeedback(msg: Message, rating: number) {
   try {
     await fetch(`${API_BASE}/api/feedback`, {
       method: 'POST',
-      headers,
+      headers: getHeaders(),
       body: JSON.stringify({
         message_id: msg.id || '',
         rating,
@@ -463,6 +505,31 @@ function closeImagePreview() {
       </div>
     </div>
 
+    <!-- 排查选项（输入框上方，VS Code 风格） -->
+    <div v-if="currentOptions.length > 0 || wasTroubleshooting" class="inline-options">
+      <template v-if="currentOptions.length > 0">
+        <button
+          v-for="(opt, idx) in currentOptions"
+          :key="idx"
+          @click="handleOptionClick(opt)"
+          class="inline-option-btn"
+          :disabled="loading"
+        >
+          {{ opt }}
+        </button>
+      </template>
+      <!-- 退出排查按钮 -->
+      <button
+        v-if="wasTroubleshooting"
+        @click="handleExitTroubleshoot"
+        class="exit-troubleshoot-btn"
+        :disabled="loading"
+      >
+         退出排查
+      </button>
+      <span class="inline-option-hint" @click="focusInput">或直接输入描述</span>
+    </div>
+
     <!-- 输入区域 -->
     <form class="input-area" role="form" aria-label="输入问题" @submit.prevent>
       <label for="chat-input" class="sr-only">输入你的问题</label>
@@ -479,6 +546,7 @@ function closeImagePreview() {
       <button type="button" @click="triggerFileInput" class="upload-btn" :disabled="loading" title="上传图片" aria-label="上传图片">📎</button>
       <input
         id="chat-input"
+        ref="chatInputRef"
         v-model="userInput"
         @keyup.enter="sendMessage(userInput)"
         placeholder="输入你的问题..."
@@ -734,6 +802,115 @@ function closeImagePreview() {
   display: inline-block;
   margin-top: 6px;
   width: fit-content;
+}
+
+/* 排查选项按钮 */
+.troubleshoot-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.option-btn {
+  padding: 5px 12px;
+  border: 1px solid #4CAF50;
+  border-radius: 14px;
+  background: #fff;
+  color: #4CAF50;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.option-btn:hover:not(:disabled) {
+  background: #4CAF50;
+  color: #fff;
+}
+
+.option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.option-hint {
+  font-size: 11px;
+  color: #999;
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+/* VS Code 风格：输入框上方的内联选项 */
+.inline-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  align-items: center;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+}
+
+.inline-option-btn {
+  padding: 6px 16px;
+  border: 1px solid #4CAF50;
+  border-radius: 16px;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(76, 175, 80, 0.2);
+}
+
+.inline-option-btn:hover:not(:disabled) {
+  background: #43a047;
+  border-color: #43a047;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+  transform: translateY(-1px);
+}
+
+.inline-option-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.inline-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 退出排查按钮 */
+.exit-troubleshoot-btn {
+  padding: 4px 12px;
+  border: 1px solid #dc3545;
+  border-radius: 14px;
+  background: #fff;
+  color: #dc3545;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.exit-troubleshoot-btn:hover:not(:disabled) {
+  background: #dc3545;
+  color: #fff;
+}
+
+.exit-troubleshoot-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inline-option-hint {
+  font-size: 12px;
+  color: #6c757d;
+  margin-left: 8px;
+  cursor: pointer;
 }
 
 .thinking {

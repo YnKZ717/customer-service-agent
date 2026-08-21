@@ -97,7 +97,7 @@ logger.info("Agent 初始化完成，FAQ 数量: %d", len(FAQ_DATA))
 
 # ── 数据模型 ──
 class ChatRequest(BaseModel):
-    user_input: str = Field(..., min_length=1, max_length=500, description="用户问题")
+    user_input: str = Field(default="", max_length=500, description="用户问题")
     history: Optional[list] = Field(default=[], description="对话历史")
     images: Optional[list[str]] = Field(default=[], description="用户上传的图片 base64 列表")
 
@@ -272,18 +272,33 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
         prev_troubleshoot_step = 0
         initial_intent = ""
         if request.history:
-            # 检查最近一轮 assistant 回复是否携带排查标记
+            # 优先检查是否有"排查结束"标记
+            has_ended = False
             for i in range(len(request.history) - 1, -1, -1):
                 role, content = request.history[i]
-                if role == "assistant" and "故障排查中" in content:
-                    # 尝试从内容中推断步骤数
-                    import re
-                    m = re.search(r'第(\d+)步', content)
-                    if m:
-                        prev_troubleshoot_step = int(m.group(1)) - 1  # 0-indexed
-                    prev_troubleshoot_flow = "resumed"  # 标记为恢复模式
-                    initial_intent = "troubleshoot"  # 强制走排查节点
+                if role == "assistant" and "排查结束" in content:
+                    has_ended = True
                     break
+                elif role == "assistant" and "故障排查中" in content:
+                    break
+
+            if not has_ended:
+                # 没有结束标记，正常恢复排查状态
+                for i in range(len(request.history) - 1, -1, -1):
+                    role, content = request.history[i]
+                    if role == "assistant" and "故障排查中" in content:
+                        # 尝试从内容中推断步骤数和 flow_id
+                        import re
+                        m = re.search(r'第(\d+)步', content)
+                        if m:
+                            prev_troubleshoot_step = int(m.group(1)) - 1  # 0-indexed
+                        fm = re.search(r'flow:(\w+)', content)
+                        if fm:
+                            prev_troubleshoot_flow = fm.group(1)
+                        else:
+                            prev_troubleshoot_flow = "resumed"  # 标记为恢复模式
+                        initial_intent = "troubleshoot"  # 强制走排查节点
+                        break
 
         result = agent_app.invoke({
             "user_input": request.user_input,
@@ -303,6 +318,7 @@ def chat(request: ChatRequest, _ip: str = Depends(check_rate_limit)):
             "user_memory": {},
             "model_used": "",
             "user_images": request.images or [],
+            "troubleshoot_options": [],
         })
 
         response_text = result.get("response", "")
@@ -691,7 +707,7 @@ def record_fallback(_ip: str = Depends(check_rate_limit)):
 # ── 工单 API ──
 
 class TicketCreateRequest(BaseModel):
-    user_input: str = Field(..., min_length=1, max_length=500, description="用户问题")
+    user_input: str = Field(default="", max_length=500, description="用户问题")
     history: Optional[list] = Field(default=[], description="对话历史")
 
 
@@ -926,16 +942,34 @@ async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)
         prev_troubleshoot_step = 0
         initial_intent = ""
         if request.history:
+            # 优先检查是否有"排查结束"标记（倒序查找最新的一条）
+            has_ended = False
             for i in range(len(request.history) - 1, -1, -1):
                 role, content = request.history[i]
-                if role == "assistant" and "故障排查中" in content:
-                    import re
-                    m = re.search(r'第 (\d+) 步', content)
-                    if m:
-                        prev_troubleshoot_step = int(m.group(1)) - 1
-                    prev_troubleshoot_flow = "resumed"
-                    initial_intent = "troubleshoot"
+                if role == "assistant" and "排查结束" in content:
+                    has_ended = True
                     break
+                elif role == "assistant" and "故障排查中" in content:
+                    # 找到排查标记，停止检查
+                    break
+
+            if not has_ended:
+                # 没有结束标记，正常恢复排查状态
+                for i in range(len(request.history) - 1, -1, -1):
+                    role, content = request.history[i]
+                    if role == "assistant" and "故障排查中" in content:
+                        import re
+                        m = re.search(r'第(\d+)步', content)
+                        if m:
+                            prev_troubleshoot_step = int(m.group(1)) - 1
+                        # 提取 flow_id
+                        fm = re.search(r'flow:(\w+)', content)
+                        if fm:
+                            prev_troubleshoot_flow = fm.group(1)
+                        else:
+                            prev_troubleshoot_flow = "resumed"
+                        initial_intent = "troubleshoot"
+                        break
 
         # 调用 Agent
         result = agent_app.invoke({
@@ -956,6 +990,7 @@ async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)
             "user_memory": {},
             "model_used": "",
             "user_images": request.images or [],
+            "troubleshoot_options": [],
         })
 
         response_text = result.get("response", "")
@@ -985,6 +1020,8 @@ async def chat_stream(request: ChatRequest, _ip: str = Depends(check_rate_limit)
                 "kb_images": result.get("kb_images", []),
                 "is_troubleshooting": is_troubleshooting,
                 "troubleshoot_step": troubleshoot_step,
+                "troubleshoot_flow": result.get("troubleshoot_flow", ""),
+                "troubleshoot_options": result.get("troubleshoot_options", []),
                 "model_used": result.get("model_used", ""),
             }
             yield f"data: {json.dumps(meta, ensure_ascii=False)}\n\n"

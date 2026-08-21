@@ -250,6 +250,20 @@ def troubleshoot(state: dict) -> dict:
     prev_step_idx = state.get("troubleshoot_step", 0)
     user_images = state.get("user_images", [])
 
+    # ── 0. 检测用户是否想退出排查 ──
+    exit_keywords = ["解决了", "好了", "不用了", "没问题了", "算了", "退出", "结束排查", "不问", "没事了", "懂了", "明白了", "谢谢不用了", "ok了", "可以了"]
+    if prev_flow and any(kw in user_input for kw in exit_keywords):
+        # 用户主动退出排查，清空状态
+        log_response(prev_step_idx, "用户主动退出排查")
+        return {
+            "response": "好的，排查已结束。如有其他问题，欢迎继续提问。",
+            "intent": "general",
+            "troubleshoot_flow": "",
+            "troubleshoot_step": 0,
+            "user_memory": _update_memory(state),
+            "troubleshoot_options": [],
+        }
+
     #  1. 匹配或复用排查流程 ──
     if prev_flow and prev_flow != "resumed":
         flow_id = prev_flow
@@ -283,6 +297,32 @@ def troubleshoot(state: dict) -> dict:
             "intent": "troubleshoot",
             "user_memory": user_memory,
         }
+
+    # ── 1.5 检测用户是否问了新问题（意图自动切换）──
+    if prev_flow:
+        # 继续对话时，检测用户输入是否是新问题
+        # 注意：排除"积分"、"余额"等词，因为用户在排查中说"积分不够"是正常场景
+        general_topics = {
+            "充值": ["充值", "付款", "支付", "扣费"],
+            "会员": ["会员", "VIP", "套餐", "订阅", "续费", "会员套餐"],
+            "退款": ["退款", "退钱", "退费", "取消订单"],
+            "投诉": ["投诉", "举报", "差评", "不满意"],
+            "账号": ["账号", "密码", "登录", "注册", "忘记密码"],
+            "功能咨询": ["怎么用", "如何使用", "功能介绍"],
+        }
+        for topic, keywords in general_topics.items():
+            if any(kw in user_input for kw in keywords):
+                # 用户问了新问题，退出排查模式
+                # 注意：不设置 response，让后续节点（kb_answer/general）正常生成回复
+                log_response(prev_step_idx, f"用户转向新问题：{topic}")
+                return {
+                    "response": "",  # 空回复，让后续节点处理
+                    "intent": "general",  # 切换到通用问答
+                    "troubleshoot_flow": "",  # 清空排查状态
+                    "troubleshoot_step": 0,
+                    "user_memory": _update_memory(state),
+                    "troubleshoot_options": [],
+                }
 
     # ── 2. 查知识库注入上下文 ──
     kb_context = get_kb_context(flow, FAQ_DATA)
@@ -405,17 +445,18 @@ def troubleshoot(state: dict) -> dict:
 
         # 判断下一步是解决方案还是新步骤
         if next_id == "done":
-            # 排查结束，建议转工单
+            # 排查结束，建议转工单，清空排查状态
             log_response(prev_step_idx + 1, "建议转工单", is_final=True)
             return {
                 "response": (
                     "如果问题仍未解决，建议点击「转人工客服」提交工单。\n"
                     "请在工单中附上 TaskID 和画布浏览器地址，客服会尽快帮你排查。"
                 ),
-                "intent": "troubleshoot",
-                "troubleshoot_flow": flow_id,
-                "troubleshoot_step": flow["max_steps"],
+                "intent": "general",  # 排查结束，恢复正常意图
+                "troubleshoot_flow": "",  # 清空流程
+                "troubleshoot_step": 0,
                 "user_memory": user_memory,
+                "troubleshoot_options": [],
             }
         elif next_id in flow.get("solutions", {}):
             # 匹配到解决方案
@@ -434,9 +475,13 @@ def troubleshoot(state: dict) -> dict:
                 "troubleshoot_flow": flow_id,
                 "troubleshoot_step": prev_step_idx + 1,
                 "user_memory": user_memory,
+                "troubleshoot_options": [],
             }
             if is_final:
-                result["response"] += "\n\n如以上方法未能解决，请点击「转人工客服」提交工单，附上 TaskID，客服会帮你处理。"
+                # 最终步骤：Agent 主动确认问题是否解决
+                result["response"] += "\n\n请问以上方案是否解决了您的问题？您可以回复「解决了」结束排查，或继续描述您的问题。"
+                # 标记为最终步骤，下一轮用户回复时根据意图判断是否退出
+                result["troubleshoot_step"] = flow["max_steps"]
             return result
         else:
             # 进入下一步骤
@@ -473,7 +518,9 @@ def troubleshoot(state: dict) -> dict:
         "- 如果已查询到任务状态/积分/会员信息，在回答中引用这些数据\n"
         "- 如果用户记忆中已有 TaskID，后续不需要再问\n"
         "- 如果问题已解决，给出解决方案\n"
-        f"- 如果排查步数已达上限({flow['max_steps']}步)，主动建议点击「转人工客服」提交工单"
+        f"- 如果排查步数已达上限({flow['max_steps']}步)，主动建议点击「转人工客服」提交工单\n"
+        "- 不要输出选项列表，选项会由前端按钮显示，只输出引导性问题即可\n"
+        "- 当用户发送了图片/截图时，要根据图片内容智能判断问题类型，直接给出针对性建议，不要继续让用户做选择题"
     )
 
     messages = [{"role": "system", "content": troubleshoot_prompt}]
@@ -499,6 +546,12 @@ def troubleshoot(state: dict) -> dict:
 
     log_response(current_step_idx, reply[:50])
 
+    # 获取当前步骤的选项列表
+    # 当用户发送了图片时，不显示选项，让 LLM 根据图片内容智能回复
+    troubleshoot_options = []
+    if current_step and not user_images:
+        troubleshoot_options = current_step.get("options", [])
+
     return {
         "response": reply,
         "intent": "troubleshoot",
@@ -506,6 +559,7 @@ def troubleshoot(state: dict) -> dict:
         "troubleshoot_step": current_step_idx,
         "user_memory": user_memory,
         "model_used": model_used,
+        "troubleshoot_options": troubleshoot_options,
     }
 
 

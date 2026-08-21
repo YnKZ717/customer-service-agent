@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const API_BASE = 'http://192.168.10.209:8001'
+const API_BASE = 'http://localhost:8001'
 
 const username = ref('')
 const password = ref('')

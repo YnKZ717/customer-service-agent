@@ -13,7 +13,7 @@ TROUBLESHOOT_FLOWS = {
         "steps": [
             {
                 "id": "step0",
-                "question": "请问有报错提示吗？可以把错误信息或截图发给我，我帮你看看是什么问题。",
+                "question": "收到！为了更好排查故障源，请在下方选择最符合您情况的选项，或直接输入描述您的问题：",
                 "branches": [
                     {"keywords": ["版权", "copyright", "限制"], "next": "solve_copyright"},
                     {"keywords": ["敏感", "违规", "色情", "暴力", "政治"], "next": "solve_sensitive"},
@@ -21,22 +21,38 @@ TROUBLESHOOT_FLOWS = {
                     {"keywords": ["超时", "卡住", "没反应", "等待", "太慢"], "next": "solve_timeout"},
                     {"keywords": ["积分", "余额", "不够", "不足"], "next": "solve_credits"},
                 ],
+                "options": [
+                    "提示涉及版权/版权限制",
+                    "提示含敏感信息",
+                    "提示词超长/字数限制",
+                    "等了很久没反应/超时",
+                    "积分不够/余额不足",
+                ],
                 "default_next": "step1",
             },
             {
                 "id": "step1",
-                "question": "能描述一下具体的操作步骤和现象吗？比如用的什么模型、提示词大概多长、等了多久？",
+                "question": "请进一步描述您遇到的具体情况，或在下方选择最符合的选项：",
                 "branches": [
                     {"keywords": ["v3", "慢"], "next": "solve_v3_slow"},
                     {"keywords": ["提示词", "不像", "不对"], "next": "solve_quality"},
                     {"keywords": ["参考图", "角色", "人脸"], "next": "solve_reference"},
                 ],
+                "options": [
+                    "用的v3模型，速度太慢",
+                    "生成的跟提示词不一样",
+                    "参考图/角色/人脸有问题",
+                ],
                 "default_next": "step2",
             },
             {
                 "id": "step2",
-                "question": "明白。请把 TaskID 发给我，我帮你提交工单让客服排查一下。你可以点击「转人工客服」按钮提交。",
+                "question": "请提供您的 TaskID，我将为您提交工单。您可以点击「转人工客服」按钮提交。",
                 "branches": [],
+                "options": [
+                    "我来提供 TaskID",
+                    "我需要更多帮助",
+                ],
                 "default_next": "done",
             },
         ],

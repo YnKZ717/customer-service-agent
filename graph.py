@@ -31,6 +31,7 @@ class AgentState(dict):
     user_memory: dict        # 多轮记忆 {task_id, member_level, problem_type, ...}
     model_used: str          # 实际使用的模型名称
     user_images: list        # 用户上传的图片 base64 列表
+    troubleshoot_options: list  # 排查步骤的预设选项列表
 
 
 def build_graph():
@@ -99,9 +100,26 @@ def build_graph():
         },
     )
 
-    # ── 其他分支 → 结束 ──
+    # ── 其他分支 → 条件判断 ──
     graph.add_edge("human", END)
-    graph.add_edge("troubleshoot", END)
+
+    # troubleshoot 节点后：如果 intent 变为 general，重新路由到知识库查询
+    def route_after_troubleshoot(state):
+        intent = state.get("intent", "troubleshoot")
+        if intent == "general":
+            return "kb_answer"
+        else:
+            return "end"
+
+    graph.add_conditional_edges(
+        "troubleshoot",
+        route_after_troubleshoot,
+        {
+            "kb_answer": "kb_answer",
+            "end": END,
+        },
+    )
+
     graph.add_edge("general", "evaluate")
     graph.add_edge("evaluate", END)
 
