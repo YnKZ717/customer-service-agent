@@ -58,10 +58,10 @@ from auth import create_token, USERS, hash_password
 # ── FastAPI 应用 ──
 app = FastAPI(title="Neowow 智能客服 API")
 
-# ── 静态文件：FAQ 截图 ──
-_FAQ_IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faq-images")
-if os.path.isdir(_FAQ_IMAGES_DIR):
-    app.mount("/faq-images", StaticFiles(directory=_FAQ_IMAGES_DIR), name="faq-images")
+# ── 静态文件：FAQ 截图（统一从 assets/images/ 读取）──
+_ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "images")
+if os.path.isdir(_ASSETS_DIR):
+    app.mount("/faq-images", StaticFiles(directory=_ASSETS_DIR), name="faq-images")
 
 # CORS：允许前端跨域访问
 app.add_middleware(
